@@ -36,7 +36,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import MicOffRoundedIcon from "@mui/icons-material/MicOffRounded";
 import MicRoundedIcon from "@mui/icons-material/MicRounded";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://192.168.1.48:3001";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://muditam-app-backend-ca1c8b03db09.herokuapp.com";
 const MAX_ATTACHMENT_BYTES = 1.5 * 1024 * 1024;
 const HUMAN_CALLS_URL = `${API_BASE_URL}/api/voice/human-calls`;
 const CALL_EVENT_PREFIXES = [

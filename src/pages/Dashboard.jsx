@@ -14,13 +14,16 @@ import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import AssignmentRoundedIcon from "@mui/icons-material/AssignmentRounded";
+import RestaurantMenuRoundedIcon from "@mui/icons-material/RestaurantMenuRounded";
 import Push from "./Push";
 import Chats from "./Chats";
 import Bookings from "./Bookings";
+import DietDashboard from "./DietDashboard";
 
 const tabs = [
   { id: "chats", label: "Chats", icon: ChatBubbleRoundedIcon },
   { id: "bookings", label: "Bookings", icon: AssignmentRoundedIcon },
+  { id: "diet", label: "Diet", icon: RestaurantMenuRoundedIcon },
   { id: "analytics", label: "Analytics", icon: AnalyticsRoundedIcon },
   { id: "push", label: "Push", icon: CampaignRoundedIcon },
 ];
@@ -189,6 +192,7 @@ function Dashboard() {
         )}
         {activeTab === "chats" && <Chats />}
         {activeTab === "bookings" && <Bookings />}
+        {activeTab === "diet" && <DietDashboard />}
         {activeTab === "push" && <Push />}
       </Box>
     </Box>
