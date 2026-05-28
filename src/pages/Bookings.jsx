@@ -16,7 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://muditam-app-backend-ca1c8b03db09.herokuapp.com";
 
 const formatDate = (value) => {
   if (!value) return "—";
@@ -38,12 +38,29 @@ export default function Bookings() {
     booking_id: "",
     booking_date: "",
     collection_date: "",
-    booking_status: "",
+    booking_status: "confirmed",
     package_code: "",
     phone: "",
   });
 
+  const hasActiveFilters = (nextFilters) =>
+    Boolean(
+      nextFilters.booking_id ||
+        nextFilters.booking_date ||
+        nextFilters.collection_date ||
+        nextFilters.booking_status ||
+        nextFilters.package_code ||
+        nextFilters.phone
+    );
+
   const loadBookings = async (nextFilters = filters) => {
+    if (!hasActiveFilters(nextFilters)) {
+      setBookings([]);
+      setMessage("Add at least one filter to load bookings.");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setMessage("");
@@ -68,7 +85,7 @@ export default function Bookings() {
   };
 
   useEffect(() => {
-    loadBookings();
+    loadBookings(filters);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const counts = useMemo(() => {
@@ -179,7 +196,7 @@ export default function Bookings() {
                 booking_id: "",
                 booking_date: "",
                 collection_date: "",
-                booking_status: "",
+                booking_status: "confirmed",
                 package_code: "",
                 phone: "",
               };

@@ -21,7 +21,7 @@ export default function Users() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    axios.get('http://localhost:3001/api/user')
+    axios.get('https://muditam-app-backend-ca1c8b03db09.herokuapp.com/api/user')
       .then(res => {
         setUsers(res.data);
         setLoading(false);

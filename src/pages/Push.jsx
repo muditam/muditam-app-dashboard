@@ -30,7 +30,7 @@ import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import SendIcon from "@mui/icons-material/Send";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://muditam-app-backend-ca1c8b03db09.herokuapp.com";
 
 const normalizePhone = (value = "") => value.replace(/\D/g, "").slice(-10);
 const toISO = (value) => (value ? new Date(value).toISOString() : null);

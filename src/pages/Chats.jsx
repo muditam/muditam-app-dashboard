@@ -47,7 +47,7 @@ const CALL_EVENT_PREFIXES = [
 
 const isImageAttachment = (attachment) =>
   attachment.type === "image" ||
-  attachment.mimeType?.startsWith("image/") ||
+  attachment.mimeType?.startsWith("image/") || 
   attachment.dataUri?.startsWith("data:image/");
 
 const isAudioAttachment = (attachment) =>
