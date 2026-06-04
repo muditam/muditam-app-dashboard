@@ -55,10 +55,38 @@ const goalOptions = [
   'hairHealth',
 ];
 
+const healthConditionOptions = [
+  { value: 'hypertension', label: 'High blood pressure' },
+  { value: 'thyroid', label: 'Hypothyroidism' },
+  { value: 'inflammation', label: 'Inflammation' },
+  { value: 'proteinDeficiency', label: 'Protein Deficiency' },
+  { value: 'vitaminB12Deficiency', label: 'Vitamin B12 Deficiency' },
+  { value: 'pcos', label: 'PCOS' },
+  { value: 'diabetes', label: 'Diabetes' },
+  { value: 'sleepDisorder', label: 'Sleep disorder' },
+  { value: 'prediabetes', label: 'Prediabetes' },
+  { value: 'anemia', label: 'Anemia' },
+  { value: 'fattyLiver', label: 'Fatty Liver' },
+  { value: 'calciumDeficiency', label: 'Calcium Deficiency' },
+  { value: 'vitaminDDeficiency', label: 'Vitamin D Deficiency' },
+  { value: 'uricAcid', label: 'Uric Acid Problem' },
+  { value: 'cholesterol', label: 'High Cholestrol/ Heart' },
+  { value: 'ibs', label: 'Digestion / Acidity / Constipation' },
+  { value: 'ironDeficiency', label: 'Iron Deficiency' },
+];
+
 function formatGoalLabel(value) {
   return String(value || '')
     .replace(/([A-Z])/g, ' $1')
     .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function formatHealthConditionLabel(value) {
+  if (value === 'heartDisease') value = 'cholesterol';
+  if (value === 'liverDisease') value = 'fattyLiver';
+  if (value === 'osteoporosis') value = 'calciumDeficiency';
+  if (value === 'uricAcidProblem') value = 'uricAcid';
+  return healthConditionOptions.find((item) => item.value === value)?.label || formatGoalLabel(value);
 }
 
 function formatDietType(value) {
@@ -183,41 +211,72 @@ export default function DietDashboard() {
   };
 
   return (
-    <Box sx={{ maxWidth: 1380, mx: 'auto' }}>
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'flex-start', md: 'center' }}
-        gap={2}
-        mb={3}
+    <Box sx={{ maxWidth: 1380, mx: 'auto', pb: 3 }}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2.2, md: 3 },
+          mb: 3,
+          borderRadius: 5,
+          border: '1px solid #d9e2f0',
+          background: 'linear-gradient(135deg, #f8fbff 0%, #f4f7ff 55%, #eef3ff 100%)',
+          boxShadow: '0 18px 48px rgba(16,24,40,0.05)',
+        }}
       >
-        <Box>
-          <Typography variant="h4" fontWeight={950} color="#1d2939">
-            Diet Plan Dashboard
-          </Typography>
-          <Typography color="#57708f" sx={{ mt: 0.75 }}>
-            Manage client health profiles and auto-generated diet plans
-          </Typography>
-        </Box>
-
-        <Button
-          variant="contained"
-          startIcon={<AddRoundedIcon />}
-          onClick={() => setLinkPickerOpen(true)}
-          sx={{
-            px: 3,
-            py: 1.4,
-            borderRadius: 2.5,
-            textTransform: 'none',
-            fontWeight: 800,
-            boxShadow: 'none',
-            bgcolor: '#2962ff',
-            '&:hover': { bgcolor: '#1e54e6', boxShadow: 'none' },
-          }}
+        <Stack
+          direction={{ xs: 'column', lg: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-start', lg: 'center' }}
+          gap={2.5}
         >
-          Generate Onboarding Link
-        </Button>
-      </Stack>
+          <Box sx={{ maxWidth: 760 }}>
+            <Typography fontSize={12} fontWeight={900} color="#315efb" letterSpacing={1.6}>
+              DIET OPERATIONS
+            </Typography>
+            <Typography variant="h4" fontWeight={950} color="#1d2939" sx={{ mt: 0.9 }}>
+              Diet Plan Dashboard
+            </Typography>
+            <Typography color="#57708f" sx={{ mt: 0.85, maxWidth: 620 }}>
+              Manage client health profiles, regenerate plans when required, and open the weekly editor to refine meal suggestions.
+            </Typography>
+          </Box>
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} gap={1.2}>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshRoundedIcon />}
+              onClick={() => setRefreshKey((current) => current + 1)}
+              sx={{
+                px: 2.4,
+                py: 1.15,
+                borderRadius: 999,
+                textTransform: 'none',
+                fontWeight: 800,
+                bgcolor: '#fff',
+              }}
+            >
+              Refresh Dashboard
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddRoundedIcon />}
+              onClick={() => setLinkPickerOpen(true)}
+              sx={{
+                px: 3,
+                py: 1.15,
+                borderRadius: 999,
+                textTransform: 'none',
+                fontWeight: 900,
+                boxShadow: 'none',
+                bgcolor: '#2962ff',
+                '&:hover': { bgcolor: '#1e54e6', boxShadow: 'none' },
+              }}
+            >
+              Generate Onboarding Link
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
 
       <Stack direction={{ xs: 'column', md: 'row' }} gap={2} mb={3}>
         {kpis.map((item) => (
@@ -227,16 +286,17 @@ export default function DietDashboard() {
             sx={{
               flex: 1,
               p: 2.6,
-              borderRadius: 3,
+              borderRadius: 4,
               border: '1px solid #d9e2f0',
-              boxShadow: '0 8px 24px rgba(16,24,40,0.04)',
+              boxShadow: '0 12px 32px rgba(16,24,40,0.05)',
+              background: 'linear-gradient(180deg, #ffffff 0%, #fbfcff 100%)',
             }}
           >
-            <Typography fontSize={18} fontWeight={950} sx={{ color: item.tone, mb: 1.25 }}>
-              {item.value}
-            </Typography>
-            <Typography fontWeight={900} color="#182230">
+            <Typography fontSize={12} fontWeight={900} sx={{ color: '#667085', mb: 0.9, textTransform: 'uppercase', letterSpacing: 1 }}>
               {item.label}
+            </Typography>
+            <Typography fontSize={28} fontWeight={950} sx={{ color: item.tone, mb: 0.55 }}>
+              {item.value}
             </Typography>
             <Typography fontSize={14} color="#57708f" sx={{ mt: 0.5 }}>
               {item.helper}
@@ -248,11 +308,11 @@ export default function DietDashboard() {
       <Paper
         elevation={0}
         sx={{
-          p: 1.75,
-          borderRadius: 3,
+          p: 2,
+          borderRadius: 4,
           border: '1px solid #d9e2f0',
           mb: 2,
-          boxShadow: '0 8px 24px rgba(16,24,40,0.04)',
+          boxShadow: '0 12px 32px rgba(16,24,40,0.05)',
         }}
       >
         <Stack direction={{ xs: 'column', lg: 'row' }} alignItems={{ lg: 'center' }} gap={1.5}>
@@ -261,9 +321,15 @@ export default function DietDashboard() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             size="small"
-            sx={{ minWidth: { lg: 240 } }}
+            sx={{ minWidth: { lg: 260 }, '& .MuiOutlinedInput-root': { borderRadius: 2.5, bgcolor: '#fbfcff' } }}
           />
-          <TextField select value={goal} onChange={(event) => setGoal(event.target.value)} size="small" sx={{ minWidth: 130 }}>
+          <TextField
+            select
+            value={goal}
+            onChange={(event) => setGoal(event.target.value)}
+            size="small"
+            sx={{ minWidth: 170, '& .MuiOutlinedInput-root': { borderRadius: 2.5, bgcolor: '#fbfcff' } }}
+          >
             {goalOptions.map((item) => (
               <MenuItem key={item || 'all-goals'} value={item}>
                 {item ? formatGoalLabel(item) : 'All Goals'}
@@ -274,14 +340,12 @@ export default function DietDashboard() {
             variant="outlined"
             startIcon={<RefreshRoundedIcon />}
             onClick={() => setRefreshKey((current) => current + 1)}
-            sx={{ textTransform: 'none', borderRadius: 2.2 }}
+            sx={{ textTransform: 'none', borderRadius: 2.5, fontWeight: 800 }}
           >
             Refresh
           </Button>
           <Box sx={{ flex: 1 }} />
-          <Typography fontSize={14} color="#57708f">
-            {rows.length} clients
-          </Typography>
+          <Chip label={`${rows.length} clients`} sx={{ borderRadius: 999, bgcolor: '#eef2ff', color: '#315efb', fontWeight: 900 }} />
         </Stack>
       </Paper>
 
@@ -292,7 +356,7 @@ export default function DietDashboard() {
         sx={{
           borderRadius: 3,
           border: '1px solid #d9e2f0',
-          boxShadow: '0 8px 24px rgba(16,24,40,0.04)',
+          boxShadow: '0 12px 32px rgba(16,24,40,0.05)',
           overflow: 'hidden',
         }}
       >
@@ -327,7 +391,14 @@ export default function DietDashboard() {
             ) : null}
 
             {rows.map((item) => (
-              <TableRow key={item.leadId} hover sx={{ '& td': { py: 2.1, borderBottomColor: '#d9e2f0' } }}>
+              <TableRow
+                key={item.leadId}
+                hover
+                sx={{
+                  '& td': { py: 2.1, borderBottomColor: '#d9e2f0' },
+                  '&:hover': { bgcolor: '#fbfcff' },
+                }}
+              >
                 <TableCell sx={{ minWidth: 320 }}>
                   <Typography fontWeight={900} color="#182230">
                     {item.clientName || 'Unnamed client'}
@@ -339,7 +410,7 @@ export default function DietDashboard() {
                     {[item.goal, ...(item.healthConditions || []).slice(0, 2)].filter(Boolean).map((chip) => (
                       <Chip
                         key={`${item.leadId}-${chip}`}
-                        label={formatGoalLabel(chip)}
+                        label={chip === item.goal ? formatGoalLabel(chip) : formatHealthConditionLabel(chip)}
                         size="small"
                         sx={{
                           height: 24,
@@ -395,7 +466,7 @@ export default function DietDashboard() {
                       variant="outlined"
                       startIcon={<EditRoundedIcon />}
                       onClick={() => navigate(`/diet/editor/${item.leadId}?mode=profile`)}
-                      sx={{ textTransform: 'none', borderRadius: 2 }}
+                      sx={{ textTransform: 'none', borderRadius: 2.2, fontWeight: 800 }}
                     >
                       Edit
                     </Button>
@@ -406,9 +477,10 @@ export default function DietDashboard() {
                       onClick={() => navigate(`/diet/editor/${item.leadId}`)}
                       sx={{
                         textTransform: 'none',
-                        borderRadius: 2,
+                        borderRadius: 2.2,
                         boxShadow: 'none',
                         bgcolor: '#2962ff',
+                        fontWeight: 800,
                         '&:hover': { bgcolor: '#1e54e6', boxShadow: 'none' },
                       }}
                     >
@@ -419,7 +491,7 @@ export default function DietDashboard() {
                       variant="outlined"
                       onClick={() => handleGeneratePlan(item.leadId)}
                       startIcon={<AutoAwesomeRoundedIcon />}
-                      sx={{ textTransform: 'none', borderRadius: 2 }}
+                      sx={{ textTransform: 'none', borderRadius: 2.2, fontWeight: 800 }}
                     >
                       Generate
                     </Button>
@@ -427,7 +499,7 @@ export default function DietDashboard() {
                       size="small"
                       variant="outlined"
                       onClick={() => handleGenerateToken(item)}
-                      sx={{ minWidth: 40, px: 1.1, borderRadius: 2 }}
+                      sx={{ minWidth: 40, px: 1.1, borderRadius: 2.2 }}
                     >
                       <LinkRoundedIcon fontSize="small" />
                     </Button>
@@ -435,7 +507,7 @@ export default function DietDashboard() {
                       size="small"
                       variant="outlined"
                       onClick={() => copyText(item.clientPhone || item.leadId)}
-                      sx={{ minWidth: 40, px: 1.1, borderRadius: 2 }}
+                      sx={{ minWidth: 40, px: 1.1, borderRadius: 2.2 }}
                     >
                       <ContentCopyRoundedIcon fontSize="small" />
                     </Button>

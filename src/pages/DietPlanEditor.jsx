@@ -64,14 +64,34 @@ const goalOptions = [
   'hairHealth',
 ];
 
+const healthConditionOptions = [
+  { value: 'hypertension', label: 'High blood pressure' },
+  { value: 'thyroid', label: 'Hypothyroidism' },
+  { value: 'inflammation', label: 'Inflammation' },
+  { value: 'proteinDeficiency', label: 'Protein Deficiency' },
+  { value: 'vitaminB12Deficiency', label: 'Vitamin B12 Deficiency' },
+  { value: 'pcos', label: 'PCOS' },
+  { value: 'diabetes', label: 'Diabetes' },
+  { value: 'sleepDisorder', label: 'Sleep disorder' },
+  { value: 'prediabetes', label: 'Prediabetes' },
+  { value: 'anemia', label: 'Anemia' },
+  { value: 'fattyLiver', label: 'Fatty Liver' },
+  { value: 'calciumDeficiency', label: 'Calcium Deficiency' },
+  { value: 'vitaminDDeficiency', label: 'Vitamin D Deficiency' },
+  { value: 'uricAcid', label: 'Uric Acid Problem' },
+  { value: 'cholesterol', label: 'High Cholestrol/ Heart' },
+  { value: 'ibs', label: 'Digestion / Acidity / Constipation' },
+  { value: 'ironDeficiency', label: 'Iron Deficiency' },
+];
+
 const allergyOptions = [
-  { code: 'SF', label: 'Seafood' },
-  { code: 'ML', label: 'Milk / Lactose' },
-  { code: 'F', label: 'Fruits' },
-  { code: 'E', label: 'Eggs' },
-  { code: 'N', label: 'Nuts' },
-  { code: 'G', label: 'Gluten' },
-  { code: 'SO', label: 'Soy' },
+  { code: 'G', label: 'Gluten Allergy' },
+  { code: 'E', label: 'Eggs Allergy' },
+  { code: 'ML', label: 'Milk/Lactose Allergy' },
+  { code: 'SF', label: 'Sea Food Allergy' },
+  { code: 'N', label: 'Nut allergy' },
+  { code: 'F', label: 'Fish Allergy' },
+  { code: 'SO', label: 'Soya Allergy' },
 ];
 
 const communityOptions = [
@@ -110,18 +130,43 @@ function formatCommunity(codes = []) {
     .join(', ');
 }
 
-function getDayLabel(day) {
+function formatHealthCondition(value) {
+  return healthConditionOptions.find((item) => item.value === value)?.label || formatGoalLabel(value);
+}
+
+function formatAllergy(value) {
+  return allergyOptions.find((item) => item.code === value)?.label || value || '-';
+}
+
+function getDayDate(day) {
   const date = new Date();
   date.setDate(date.getDate() + Number(day?.dayIndex || 0));
+  return date;
+}
+
+function getDayLabel(day) {
+  const date = getDayDate(day);
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function getDayWeekday(day) {
+  const date = getDayDate(day);
+  return date.toLocaleDateString('en-US', { weekday: 'short' });
 }
 
 function buildProfileDraft(profile) {
   if (!profile) return null;
+  const normalizedHealthConditions = (profile.healthConditions || []).map((value) => {
+    if (value === 'heartDisease') return 'cholesterol';
+    if (value === 'liverDisease') return 'fattyLiver';
+    if (value === 'osteoporosis') return 'calciumDeficiency';
+    if (value === 'uricAcidProblem') return 'uricAcid';
+    return value;
+  });
   return {
     ...profile,
     communityCodes: Array.isArray(profile.communityCodes) ? profile.communityCodes : [],
-    healthConditions: Array.isArray(profile.healthConditions) ? profile.healthConditions : [],
+    healthConditions: Array.isArray(normalizedHealthConditions) ? normalizedHealthConditions : [],
     allergies: Array.isArray(profile.allergies) ? profile.allergies : [],
   };
 }
@@ -138,7 +183,7 @@ function SectionTagPicker({ title, items, selected, onToggle }) {
       </Typography>
       <Stack direction="row" flexWrap="wrap" gap={1}>
         {items.map((item) => {
-          const value = item.code || item;
+          const value = item.value || item.code || item;
           const label = item.label || formatGoalLabel(item);
           const active = selected.includes(value);
           return (
@@ -166,16 +211,76 @@ function ProfileDialog({ open, form, onChange, onClose, onSave }) {
   if (!form) return null;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
-      <DialogContent sx={{ p: 0, bgcolor: '#f7f8ff' }}>
-        <Stack direction="row" justifyContent="flex-end" p={1.25}>
-          <IconButton onClick={onClose} sx={{ border: '1px solid #d9e2f0', bgcolor: '#fff' }}>
-            <CloseRoundedIcon />
-          </IconButton>
-        </Stack>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xl"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 5,
+          overflow: 'hidden',
+          boxShadow: '0 28px 80px rgba(16,24,40,0.16)',
+        },
+      }}
+    >
+      <DialogContent sx={{ p: 0, bgcolor: '#f5f7ff' }}>
+        <Box
+          sx={{
+            px: { xs: 2, md: 2.6 },
+            py: { xs: 1.8, md: 2.2 },
+            background: 'linear-gradient(135deg, #eef3ff 0%, #f9fbff 100%)',
+            borderBottom: '1px solid #dbe4f2',
+          }}
+        >
+          <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={2}>
+            <Box>
+              <Typography fontSize={12} fontWeight={900} color="#315efb" letterSpacing={1.4}>
+                PROFILE EDITOR
+              </Typography>
+              <Typography fontSize={28} fontWeight={950} color="#182230" sx={{ mt: 0.8 }}>
+                Basic Information
+              </Typography>
+              <Typography fontSize={14} color="#526079" sx={{ mt: 0.7, maxWidth: 640 }}>
+                Update personal details, body metrics, activity level, and diet preferences before generating or refining the weekly plan.
+              </Typography>
+            </Box>
+            <IconButton onClick={onClose} sx={{ border: '1px solid #d9e2f0', bgcolor: '#fff' }}>
+              <CloseRoundedIcon />
+            </IconButton>
+          </Stack>
+        </Box>
 
-        <Box sx={{ px: 2, pb: 2 }}>
-          <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #d9e2f0', overflow: 'hidden', mb: 2 }}>
+        <Box sx={{ px: { xs: 1.6, md: 2.2 }, py: { xs: 1.6, md: 2.2 } }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} gap={1.2} sx={{ mb: 1.8 }}>
+            {[
+              ['Client', form.clientName || 'Unnamed client'],
+              ['Diet Preference', formatDietType(form.dietType)],
+              ['Goal', formatGoalLabel(form.goal)],
+              ['Activity', formatActivity(form.activityCode)],
+            ].map(([label, value]) => (
+              <Paper
+                key={label}
+                elevation={0}
+                sx={{
+                  flex: 1,
+                  p: 1.4,
+                  borderRadius: 3,
+                  border: '1px solid #d9e2f0',
+                  bgcolor: '#fff',
+                }}
+              >
+                <Typography fontSize={11} fontWeight={900} color="#667085" textTransform="uppercase" letterSpacing={0.7}>
+                  {label}
+                </Typography>
+                <Typography fontSize={16} fontWeight={900} color="#182230" sx={{ mt: 0.55 }}>
+                  {value || '-'}
+                </Typography>
+              </Paper>
+            ))}
+          </Stack>
+
+          <Paper elevation={0} sx={{ borderRadius: 3.5, border: '1px solid #d9e2f0', overflow: 'hidden', mb: 2, boxShadow: '0 10px 24px rgba(16,24,40,0.04)' }}>
             <Box sx={{ px: 2.2, py: 1.8, borderBottom: '1px solid #e5ecf6', bgcolor: '#fff' }}>
               <Typography fontWeight={900} color="#182230">
                 Basic Information
@@ -185,31 +290,79 @@ function ProfileDialog({ open, form, onChange, onClose, onSave }) {
               </Typography>
             </Box>
 
-            <Box sx={{ p: 2, bgcolor: '#fff' }}>
+            <Box sx={{ p: 2.2, bgcolor: '#fff' }}>
               <Stack direction={{ xs: 'column', md: 'row' }} gap={2} mb={2}>
-                <TextField label="Name *" value={form.clientName || ''} onChange={(event) => onChange({ ...form, clientName: event.target.value })} fullWidth />
-                <TextField label="Age *" type="number" value={form.age || ''} onChange={(event) => onChange({ ...form, age: Number(event.target.value) })} fullWidth />
+                <TextField
+                  label="Name *"
+                  value={form.clientName || ''}
+                  onChange={(event) => onChange({ ...form, clientName: event.target.value })}
+                  fullWidth
+                  InputProps={{ sx: { borderRadius: 2.5, bgcolor: '#fbfcff' } }}
+                />
+                <TextField
+                  label="Age *"
+                  type="number"
+                  value={form.age || ''}
+                  onChange={(event) => onChange({ ...form, age: Number(event.target.value) })}
+                  fullWidth
+                  InputProps={{ sx: { borderRadius: 2.5, bgcolor: '#fbfcff' } }}
+                />
               </Stack>
 
               <Stack direction={{ xs: 'column', md: 'row' }} gap={2} mb={2}>
-                <TextField select label="Gender *" value={form.gender || 'female'} onChange={(event) => onChange({ ...form, gender: event.target.value })} fullWidth>
+                <TextField
+                  select
+                  label="Gender *"
+                  value={form.gender || 'female'}
+                  onChange={(event) => onChange({ ...form, gender: event.target.value })}
+                  fullWidth
+                  InputProps={{ sx: { borderRadius: 2.5, bgcolor: '#fbfcff' } }}
+                >
                   <MenuItem value="male">Male</MenuItem>
                   <MenuItem value="female">Female</MenuItem>
                   <MenuItem value="other">Other</MenuItem>
                 </TextField>
-                <TextField select label="Country *" value="India" fullWidth>
+                <TextField select label="Country *" value="India" fullWidth InputProps={{ sx: { borderRadius: 2.5, bgcolor: '#fbfcff' } }}>
                   <MenuItem value="India">India</MenuItem>
                 </TextField>
               </Stack>
 
               <Stack direction={{ xs: 'column', md: 'row' }} gap={2} mb={2}>
-                <TextField label="Actual Weight *" type="number" value={form.weightKg || ''} onChange={(event) => onChange({ ...form, weightKg: Number(event.target.value) })} fullWidth />
-                <TextField label="Desired Weight" type="number" value={form.targetWeightKg || ''} onChange={(event) => onChange({ ...form, targetWeightKg: Number(event.target.value) })} fullWidth />
+                <TextField
+                  label="Actual Weight *"
+                  type="number"
+                  value={form.weightKg || ''}
+                  onChange={(event) => onChange({ ...form, weightKg: Number(event.target.value) })}
+                  fullWidth
+                  InputProps={{ sx: { borderRadius: 2.5, bgcolor: '#fbfcff' } }}
+                />
+                <TextField
+                  label="Desired Weight"
+                  type="number"
+                  value={form.targetWeightKg || ''}
+                  onChange={(event) => onChange({ ...form, targetWeightKg: Number(event.target.value) })}
+                  fullWidth
+                  InputProps={{ sx: { borderRadius: 2.5, bgcolor: '#fbfcff' } }}
+                />
               </Stack>
 
               <Stack direction={{ xs: 'column', md: 'row' }} gap={2}>
-                <TextField label="Height *" type="number" value={form.heightCm || ''} onChange={(event) => onChange({ ...form, heightCm: Number(event.target.value) })} fullWidth />
-                <TextField select label="Community *" value={form.communityCodes?.[0] || 'U'} onChange={(event) => onChange({ ...form, communityCodes: [event.target.value] })} fullWidth>
+                <TextField
+                  label="Height *"
+                  type="number"
+                  value={form.heightCm || ''}
+                  onChange={(event) => onChange({ ...form, heightCm: Number(event.target.value) })}
+                  fullWidth
+                  InputProps={{ sx: { borderRadius: 2.5, bgcolor: '#fbfcff' } }}
+                />
+                <TextField
+                  select
+                  label="Community *"
+                  value={form.communityCodes?.[0] || 'U'}
+                  onChange={(event) => onChange({ ...form, communityCodes: [event.target.value] })}
+                  fullWidth
+                  InputProps={{ sx: { borderRadius: 2.5, bgcolor: '#fbfcff' } }}
+                >
                   {communityOptions.map((item) => (
                     <MenuItem key={item.code} value={item.code}>
                       {item.label}
@@ -220,7 +373,7 @@ function ProfileDialog({ open, form, onChange, onClose, onSave }) {
             </Box>
           </Paper>
 
-          <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #d9e2f0', overflow: 'hidden' }}>
+          <Paper elevation={0} sx={{ borderRadius: 3.5, border: '1px solid #d9e2f0', overflow: 'hidden', boxShadow: '0 10px 24px rgba(16,24,40,0.04)' }}>
             <Box sx={{ px: 2.2, py: 1.8, borderBottom: '1px solid #e5ecf6', bgcolor: '#fff' }}>
               <Typography fontWeight={900} color="#182230">
                 Health &amp; Diet
@@ -230,64 +383,88 @@ function ProfileDialog({ open, form, onChange, onClose, onSave }) {
               </Typography>
             </Box>
 
-            <Box sx={{ p: 2, bgcolor: '#fff' }}>
-              <Stack direction={{ xs: 'column', md: 'row' }} gap={2} mb={2}>
-                <TextField select label="Activity Level *" value={form.activityCode || 'AC1'} onChange={(event) => onChange({ ...form, activityCode: event.target.value })} fullWidth>
+            <Box sx={{ p: 2.2, bgcolor: '#fff' }}>
+              <Stack direction={{ xs: 'column', lg: 'row' }} gap={2} mb={2}>
+                <TextField
+                  select
+                  label="Activity Level *"
+                  value={form.activityCode || 'AC1'}
+                  onChange={(event) => onChange({ ...form, activityCode: event.target.value })}
+                  fullWidth
+                  InputProps={{ sx: { borderRadius: 2.5, bgcolor: '#fbfcff' } }}
+                >
                   {activityOptions.map((item) => (
                     <MenuItem key={item.value} value={item.value}>
                       {item.label}
                     </MenuItem>
                   ))}
                 </TextField>
-                <TextField select label="Diet Preference *" value={form.dietType || 'V'} onChange={(event) => onChange({ ...form, dietType: event.target.value })} fullWidth>
+                <TextField
+                  select
+                  label="Diet Preference *"
+                  value={form.dietType || 'V'}
+                  onChange={(event) => onChange({ ...form, dietType: event.target.value })}
+                  fullWidth
+                  InputProps={{ sx: { borderRadius: 2.5, bgcolor: '#fbfcff' } }}
+                >
                   {dietTypeOptions.map((item) => (
                     <MenuItem key={item.value} value={item.value}>
                       {item.label}
                     </MenuItem>
                   ))}
                 </TextField>
-              </Stack>
-
-              <Stack direction={{ xs: 'column', md: 'row' }} gap={2} mb={2}>
-                <TextField select label="Diet Plan Name *" value={form.goal || 'weightLoss'} onChange={(event) => onChange({ ...form, goal: event.target.value })} fullWidth>
+                <TextField
+                  select
+                  label="Diet Plan Name *"
+                  value={form.goal || 'weightLoss'}
+                  onChange={(event) => onChange({ ...form, goal: event.target.value })}
+                  fullWidth
+                  InputProps={{ sx: { borderRadius: 2.5, bgcolor: '#fbfcff' } }}
+                >
                   {goalOptions.map((item) => (
                     <MenuItem key={item} value={item}>
                       {formatGoalLabel(item)}
                     </MenuItem>
                   ))}
                 </TextField>
-                <Box sx={{ flex: 1 }}>
-                  <SectionTagPicker
-                    title="Disorders"
-                    items={goalOptions}
-                    selected={form.healthConditions || []}
-                    onToggle={(value) => onChange({ ...form, healthConditions: toggleCode(form.healthConditions || [], value) })}
-                  />
-                </Box>
               </Stack>
 
               <Divider sx={{ my: 2 }} />
 
-              <SectionTagPicker
-                title="Allergies"
-                items={allergyOptions}
-                selected={form.allergies || []}
-                onToggle={(value) => onChange({ ...form, allergies: toggleCode(form.allergies || [], value) })}
-              />
+              <Box sx={{ p: 1.5, borderRadius: 2.5, border: '1px solid #e4e7ec', bgcolor: '#fbfcff' }}>
+                <SectionTagPicker
+                  title="Disorders"
+                  items={healthConditionOptions}
+                  selected={form.healthConditions || []}
+                  onToggle={(value) => onChange({ ...form, healthConditions: toggleCode(form.healthConditions || [], value) })}
+                />
+              </Box>
 
-              <Stack alignItems="center" mt={3}>
+              <Box sx={{ mt: 2, p: 1.5, borderRadius: 2.5, border: '1px solid #e4e7ec', bgcolor: '#fbfcff' }}>
+                <SectionTagPicker
+                  title="Allergies"
+                  items={allergyOptions}
+                  selected={form.allergies || []}
+                  onToggle={(value) => onChange({ ...form, allergies: toggleCode(form.allergies || [], value) })}
+                />
+              </Box>
+
+              <Stack direction="row" justifyContent="flex-end" gap={1.2} mt={3}>
+                <Button onClick={onClose} sx={{ textTransform: 'none', fontWeight: 800, color: '#667085' }}>
+                  Cancel
+                </Button>
                 <Button
                   variant="contained"
                   onClick={onSave}
                   sx={{
-                    minWidth: 260,
-                    py: 1.4,
+                    minWidth: 220,
+                    py: 1.25,
                     borderRadius: 999,
                     textTransform: 'none',
                     fontWeight: 900,
-                    bgcolor: '#a8b2ff',
+                    bgcolor: '#315efb',
                     boxShadow: 'none',
-                    '&:hover': { bgcolor: '#8f9cff', boxShadow: 'none' },
+                    '&:hover': { bgcolor: '#2449cc', boxShadow: 'none' },
                   }}
                 >
                   Update Profile
@@ -498,8 +675,8 @@ export default function DietPlanEditor() {
               ['Food Pref.', formatDietType(profile?.dietType)],
               ['Country', 'India'],
               ['Community', formatCommunity(profile?.communityCodes) || '-'],
-              ['Allergy', (profile?.allergies || []).join(', ') || '-'],
-              ['Diseases', (profile?.healthConditions || []).map(formatGoalLabel).join(', ') || '-'],
+              ['Allergy', (profile?.allergies || []).map(formatAllergy).join(', ') || '-'],
+              ['Diseases', (profile?.healthConditions || []).map(formatHealthCondition).join(', ') || '-'],
             ].map(([label, value]) => (
               <Box key={label} sx={{ minWidth: 84, flex: '1 1 82px' }}>
                 <Typography fontSize={11} color="#6c7cff" sx={{ mb: 0.65 }}>
@@ -556,14 +733,6 @@ export default function DietPlanEditor() {
 
           <Stack direction="row" gap={1} flexWrap="wrap">
             <Button
-              startIcon={<AutoAwesomeRoundedIcon />}
-              variant="outlined"
-              onClick={() => dietApi.generatePlan({ leadId, generatedBy: 'staff', createdBy: 'staff' }).then(load)}
-              sx={{ textTransform: 'none', borderRadius: 2.5, fontWeight: 800 }}
-            >
-              Regenerate Plan
-            </Button>
-            <Button
               startIcon={<ContentCopyRoundedIcon />}
               variant="outlined"
               onClick={() => copyText(profile?.clientPhone || leadId)}
@@ -589,6 +758,7 @@ export default function DietPlanEditor() {
           <Stack direction="row" gap={1.2} sx={{ minWidth: 1120, mb: 2 }}>
             <Box sx={{ width: 200, flexShrink: 0 }} />
             {(plan?.planDays || []).map((day) => {
+              const weekday = getDayWeekday(day);
               const totals = (day.slots || []).reduce(
                 (acc, slot) => {
                   acc.calories += Number(slot.totalCalories || 0);
@@ -615,7 +785,7 @@ export default function DietPlanEditor() {
                   }}
                 >
                   <Typography textAlign="center" fontWeight={900} color="#295dff">
-                    {day.dayLabel.slice(0, 3)}
+                    {weekday}
                   </Typography>
                   <Typography textAlign="center" fontSize={12} color="#667085" sx={{ mt: 0.4 }}>
                     {getDayLabel(day)}
