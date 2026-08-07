@@ -3,12 +3,12 @@ import {
   Alert,
   Box,
   Chip,
-  CircularProgress,
   InputAdornment,
   List,
   ListItemButton,
   ListItemText,
   Paper,
+  Skeleton,
   Stack,
   TextField,
   Typography,
@@ -31,6 +31,48 @@ function EmptyPanel({ icon: Icon, title, description }) {
         {title}
       </Typography>
       <Typography fontSize={13}>{description}</Typography>
+    </Stack>
+  );
+}
+
+function ConversationListSkeleton({ rows = 8 }) {
+  return (
+    <Stack gap={0.75}>
+      {Array.from({ length: rows }, (_, index) => (
+        <Box key={index} sx={{ px: 2, py: 1.25, borderRadius: 2 }}>
+          <Skeleton variant="text" sx={{ fontSize: 13.5, width: "45%" }} />
+          <Skeleton variant="text" sx={{ fontSize: 12, width: "65%" }} />
+        </Box>
+      ))}
+    </Stack>
+  );
+}
+
+function TranscriptSkeleton() {
+  const widths = ["55%", "70%", "40%", "60%"];
+  return (
+    <Stack sx={{ p: 2.5, gap: 1.5, height: "100%" }}>
+      {widths.map((width, index) => (
+        <Skeleton
+          key={index}
+          variant="rounded"
+          height={48}
+          sx={{ width, alignSelf: index % 2 === 0 ? "flex-end" : "flex-start", borderRadius: 2.5 }}
+        />
+      ))}
+    </Stack>
+  );
+}
+
+function CustomerProfileSkeleton({ rows = 8 }) {
+  return (
+    <Stack gap={1.5}>
+      {Array.from({ length: rows }, (_, index) => (
+        <Box key={index}>
+          <Skeleton variant="text" sx={{ fontSize: 11.5, width: "35%" }} />
+          <Skeleton variant="text" sx={{ fontSize: 14, width: "65%" }} />
+        </Box>
+      ))}
     </Stack>
   );
 }
@@ -147,7 +189,8 @@ function HandoffActions({ handoff }) {
   );
 }
 
-function Transcript({ detail }) {
+function Transcript({ detail, loading }) {
+  if (loading) return <TranscriptSkeleton />;
   if (!detail) {
     return <EmptyPanel icon={ForumRoundedIcon} title="Select a conversation" description="Pick a session on the left to view its transcript." />;
   }
@@ -181,7 +224,8 @@ function Transcript({ detail }) {
   );
 }
 
-function CustomerProfile({ detail }) {
+function CustomerProfile({ detail, loading }) {
+  if (loading) return <CustomerProfileSkeleton />;
   if (!detail) {
     return <EmptyPanel icon={PersonRoundedIcon} title="No profile data" description="Location, health concern, language, and visit history will show here." />;
   }
@@ -227,6 +271,7 @@ function WidgetConversations() {
   const [detail, setDetail] = useState(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -241,9 +286,11 @@ function WidgetConversations() {
   useEffect(() => {
     if (!selectedId) { setDetail(null); return; }
     let cancelled = false;
+    setDetailLoading(true);
     commerceWidgetApi.getConversation(selectedId)
       .then((data) => { if (!cancelled) setDetail(data); })
-      .catch((err) => { if (!cancelled) setError(err.message); });
+      .catch((err) => { if (!cancelled) setError(err.message); })
+      .finally(() => { if (!cancelled) setDetailLoading(false); });
     return () => { cancelled = true; };
   }, [selectedId]);
 
@@ -258,7 +305,6 @@ function WidgetConversations() {
             Browse and review every AI widget conversation
           </Typography>
         </Box>
-        {loading && <CircularProgress size={20} />}
       </Stack>
 
       {error && (
@@ -289,7 +335,9 @@ function WidgetConversations() {
             InputProps={{ endAdornment: <InputAdornment position="end"><SearchRoundedIcon fontSize="small" /></InputAdornment> }}
           />
           <Box sx={{ flex: 1, overflowY: "auto" }}>
-            <ConversationList conversations={conversations} selectedId={selectedId} onSelect={setSelectedId} search={search} />
+            {loading
+              ? <ConversationListSkeleton />
+              : <ConversationList conversations={conversations} selectedId={selectedId} onSelect={setSelectedId} search={search} />}
           </Box>
         </Paper>
 
@@ -304,7 +352,7 @@ function WidgetConversations() {
             overflow: "hidden",
           }}
         >
-          <Transcript detail={detail} />
+          <Transcript detail={detail} loading={detailLoading} />
         </Paper>
 
         <Paper
@@ -320,7 +368,7 @@ function WidgetConversations() {
           <Typography fontWeight={950} fontSize={16} sx={{ mb: 1.5 }}>
             Customer Profile
           </Typography>
-          <CustomerProfile detail={detail} />
+          <CustomerProfile detail={detail} loading={detailLoading} />
         </Paper>
       </Stack>
     </Box>
