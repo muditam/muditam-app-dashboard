@@ -1,118 +1,81 @@
 import React from "react";
-import { Box, Container, Stack, Typography, ButtonBase } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
-import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
-import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
+import { theme } from "./theme";
 
 const navItems = [
-  { path: "/widget/dashboard", label: "Dashboard", icon: DashboardRoundedIcon },
-  { path: "/widget/conversations", label: "Conversations", icon: ForumRoundedIcon },
+  {
+    path: "/widget/dashboard",
+    label: "Dashboard",
+    title: "AI Performance",
+    subtitle: "Track performance and insights across your storefront chat",
+  },
+  {
+    path: "/widget/conversations",
+    label: "Conversations",
+    title: "Conversations",
+    subtitle: "Browse and review every AI widget conversation",
+  },
 ];
 
 function WidgetLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const current = navItems.find((item) => location.pathname.startsWith(item.path)) ?? navItems[0];
 
   return (
-    <Box
-      sx={{
-        width: "100%",
-        minHeight: "100vh",
-        color: "#101828",
-        background: "linear-gradient(180deg, #eef6f3 0%, #f7f8fb 38%, #ffffff 100%)",
-      }}
-    >
+    <Box sx={{ minHeight: "100vh", bgcolor: theme.canvas }}>
       <Box
         component="header"
         sx={{
           position: "sticky",
           top: 0,
-          zIndex: 20,
-          borderBottom: "1px solid rgba(16, 24, 40, 0.08)",
-          bgcolor: "rgba(255,255,255,0.84)",
-          backdropFilter: "blur(18px)",
+          zIndex: 10,
+          borderBottom: `1px solid ${theme.border}`,
+          bgcolor: "rgba(251, 251, 252, 0.9)",
+          backdropFilter: "blur(10px)",
         }}
       >
-        <Container maxWidth={false} sx={{ px: { xs: 1.5, md: 3 }, py: 1.25 }}>
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            alignItems={{ xs: "stretch", md: "center" }}
-            justifyContent="space-between"
-            gap={1.5}
-          >
-            <Stack direction="row" alignItems="center" gap={1.25}>
-              <Box
-                sx={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 2,
-                  display: "grid",
-                  placeItems: "center",
-                  color: "#fff",
-                  background: "linear-gradient(135deg, #0f766e 0%, #543287 100%)",
-                  boxShadow: "0 14px 34px rgba(15, 118, 110, 0.22)",
-                }}
-              >
-                <SmartToyRoundedIcon />
-              </Box>
-              <Box>
-                <Typography fontSize={20} fontWeight={950} lineHeight={1.05}>
-                  AI Widget
-                </Typography>
-                <Typography fontSize={12.5} color="text.secondary" fontWeight={700}>
-                  Storefront AI chat performance and conversations
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.5,
-                p: 0.5,
-                borderRadius: 2,
-                border: "1px solid rgba(16, 24, 40, 0.08)",
-                bgcolor: "#fff",
-                overflowX: "auto",
-              }}
-            >
+        <Box sx={{ px: { xs: 2.5, md: 5 }, pt: { xs: 1.5, sm: 1.75 } }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Typography sx={{ fontSize: 12.5, fontWeight: 650, color: theme.faint, letterSpacing: "0.01em" }}>
+              Muditam AI
+            </Typography>
+            <Stack direction="row" gap={{ xs: 2, sm: 3 }}>
               {navItems.map((item) => {
-                const Icon = item.icon;
-                const selected = location.pathname.startsWith(item.path);
+                const active = location.pathname.startsWith(item.path);
                 return (
-                  <ButtonBase
+                  <Box
                     key={item.path}
                     onClick={() => navigate(item.path)}
                     sx={{
-                      minHeight: 40,
-                      px: 1.5,
-                      borderRadius: 1.5,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 0.75,
-                      whiteSpace: "nowrap",
-                      color: selected ? "#fff" : "#475467",
-                      bgcolor: selected ? "#182230" : "transparent",
-                      fontWeight: 850,
-                      fontSize: 14,
-                      "&:hover": {
-                        bgcolor: selected ? "#182230" : "#f2f4f7",
-                      },
+                      cursor: "pointer",
+                      fontSize: 13.5,
+                      fontWeight: active ? 650 : 500,
+                      color: active ? theme.ink : theme.muted,
+                      pb: 0.5,
+                      borderBottom: active ? `2px solid ${theme.accent}` : "2px solid transparent",
                     }}
                   >
-                    <Icon sx={{ fontSize: 18 }} />
                     {item.label}
-                  </ButtonBase>
+                  </Box>
                 );
               })}
-            </Box>
+            </Stack>
           </Stack>
-        </Container>
+
+          <Box sx={{ py: { xs: 1.75, sm: 2 } }}>
+            <Typography sx={{ fontSize: { xs: 22, md: 24 }, fontWeight: 700, letterSpacing: "-0.02em", color: theme.ink }}>
+              {current.title}
+            </Typography>
+            <Typography sx={{ fontSize: 13, color: theme.muted, mt: 0.35 }}>
+              {current.subtitle}
+            </Typography>
+          </Box>
+        </Box>
       </Box>
 
-      <Box component="main" sx={{ px: { xs: 1.5, md: 3 }, py: { xs: 2, md: 2.5 } }}>
+      <Box component="main" sx={{ px: { xs: 2, sm: 3, md: 5 }, py: { xs: 3, md: 4 } }}>
         <Outlet />
       </Box>
     </Box>

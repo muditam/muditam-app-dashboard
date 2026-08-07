@@ -1,47 +1,32 @@
 import React, { useEffect, useState } from "react";
-import {
-  Alert,
-  Box,
-  Chip,
-  InputAdornment,
-  List,
-  ListItemButton,
-  ListItemText,
-  Paper,
-  Skeleton,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Alert, Box, InputAdornment, Skeleton, Stack, TextField, Typography } from "@mui/material";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
-import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import { commerceWidgetApi } from "../../lib/commerceWidgetApi";
+import { theme } from "./theme";
 
-function EmptyPanel({ icon: Icon, title, description }) {
+function EmptyPanel({ title, description }) {
   return (
     <Stack
       alignItems="center"
       justifyContent="center"
-      gap={1}
-      sx={{ height: "100%", minHeight: 320, color: "text.secondary", textAlign: "center", px: 3 }}
+      gap={0.75}
+      sx={{ height: "100%", minHeight: 320, color: theme.faint, textAlign: "center", px: 3 }}
     >
-      <Icon sx={{ fontSize: 32, opacity: 0.5 }} />
-      <Typography fontWeight={850} fontSize={14.5}>
+      <Typography sx={{ fontWeight: 600, fontSize: 13.5, color: theme.muted }}>
         {title}
       </Typography>
-      <Typography fontSize={13}>{description}</Typography>
+      <Typography sx={{ fontSize: 12.5 }}>{description}</Typography>
     </Stack>
   );
 }
 
 function ConversationListSkeleton({ rows = 8 }) {
   return (
-    <Stack gap={0.75}>
+    <Stack gap={1.25}>
       {Array.from({ length: rows }, (_, index) => (
-        <Box key={index} sx={{ px: 2, py: 1.25, borderRadius: 2 }}>
-          <Skeleton variant="text" sx={{ fontSize: 13.5, width: "45%" }} />
-          <Skeleton variant="text" sx={{ fontSize: 12, width: "65%" }} />
+        <Box key={index} sx={{ px: 1.5, py: 0.5 }}>
+          <Skeleton variant="text" sx={{ fontSize: 13, width: "45%" }} />
+          <Skeleton variant="text" sx={{ fontSize: 11.5, width: "65%" }} />
         </Box>
       ))}
     </Stack>
@@ -51,13 +36,13 @@ function ConversationListSkeleton({ rows = 8 }) {
 function TranscriptSkeleton() {
   const widths = ["55%", "70%", "40%", "60%"];
   return (
-    <Stack sx={{ p: 2.5, gap: 1.5, height: "100%" }}>
+    <Stack sx={{ p: 3, gap: 1.5, height: "100%" }}>
       {widths.map((width, index) => (
         <Skeleton
           key={index}
           variant="rounded"
-          height={48}
-          sx={{ width, alignSelf: index % 2 === 0 ? "flex-end" : "flex-start", borderRadius: 2.5 }}
+          height={44}
+          sx={{ width, alignSelf: index % 2 === 0 ? "flex-end" : "flex-start", borderRadius: 2 }}
         />
       ))}
     </Stack>
@@ -66,11 +51,11 @@ function TranscriptSkeleton() {
 
 function CustomerProfileSkeleton({ rows = 8 }) {
   return (
-    <Stack gap={1.5}>
+    <Stack gap={1.75}>
       {Array.from({ length: rows }, (_, index) => (
         <Box key={index}>
-          <Skeleton variant="text" sx={{ fontSize: 11.5, width: "35%" }} />
-          <Skeleton variant="text" sx={{ fontSize: 14, width: "65%" }} />
+          <Skeleton variant="text" sx={{ fontSize: 11, width: "35%" }} />
+          <Skeleton variant="text" sx={{ fontSize: 13.5, width: "65%" }} />
         </Box>
       ))}
     </Stack>
@@ -87,36 +72,52 @@ function ConversationList({ conversations, selectedId, onSelect, search }) {
     ? conversations.filter((item) => item.conversationId.toLowerCase().includes(search.toLowerCase()))
     : conversations;
   if (!filtered.length) {
-    return <EmptyPanel icon={ForumRoundedIcon} title="No sessions yet" description="Conversations will appear here as customers chat." />;
+    return <EmptyPanel title="No sessions yet" description="Conversations will appear here as customers chat." />;
   }
   return (
-    <List disablePadding>
-      {filtered.map((item) => (
-        <ListItemButton
-          key={item.conversationId}
-          selected={item.conversationId === selectedId}
-          onClick={() => onSelect(item.conversationId)}
-          sx={{ borderRadius: 2, mb: 0.5 }}
-        >
-          <ListItemText
-            primary={item.conversationId.slice(0, 8)}
-            secondary={formatTime(item.lastMessageAt)}
-            primaryTypographyProps={{ fontSize: 13.5, fontWeight: 800 }}
-            secondaryTypographyProps={{ fontSize: 12 }}
-          />
-          {item.resolutionStatus === "escalated" && (
-            <Chip size="small" label="Escalated" color="warning" sx={{ fontWeight: 800 }} />
-          )}
-        </ListItemButton>
-      ))}
-    </List>
+    <Stack gap={0.25}>
+      {filtered.map((item) => {
+        const selected = item.conversationId === selectedId;
+        return (
+          <Box
+            key={item.conversationId}
+            onClick={() => onSelect(item.conversationId)}
+            sx={{
+              px: 1.5,
+              py: 1,
+              borderRadius: `${theme.radiusSmall}px`,
+              cursor: "pointer",
+              bgcolor: selected ? theme.accentSoft : "transparent",
+              "&:hover": { bgcolor: selected ? theme.accentSoft : theme.canvas },
+            }}
+          >
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography sx={{ fontSize: 13, fontWeight: 600, color: theme.ink }}>
+                {item.conversationId.slice(0, 8)}
+              </Typography>
+              {item.resolutionStatus === "escalated" && (
+                <Box sx={{
+                  fontSize: 10.5, fontWeight: 650, color: theme.danger, bgcolor: theme.dangerSoft,
+                  borderRadius: 999, px: 0.9, py: 0.15,
+                }}>
+                  Escalated
+                </Box>
+              )}
+            </Stack>
+            <Typography sx={{ fontSize: 11.5, color: theme.muted, mt: 0.15 }}>
+              {formatTime(item.lastMessageAt)}
+            </Typography>
+          </Box>
+        );
+      })}
+    </Stack>
   );
 }
 
 function ProductCards({ products }) {
   if (!products?.length) return null;
   return (
-    <Stack direction="row" flexWrap="wrap" gap={1.25} sx={{ alignSelf: "flex-start", maxWidth: "90%" }}>
+    <Stack direction="row" flexWrap="wrap" gap={1} sx={{ alignSelf: "flex-start", maxWidth: "90%" }}>
       {products.map((product) => (
         <Box
           key={product.productSlug}
@@ -128,17 +129,17 @@ function ProductCards({ products }) {
             display: "block",
             textDecoration: "none",
             color: "inherit",
-            width: 200,
-            borderRadius: 2.5,
-            border: "1px solid rgba(16, 24, 40, 0.1)",
-            bgcolor: "#fff",
+            width: 190,
+            borderRadius: `${theme.radiusSmall}px`,
+            border: `1px solid ${theme.border}`,
+            bgcolor: theme.surface,
             p: 1.5,
           }}
         >
-          <Typography fontSize={13.5} fontWeight={800}>
+          <Typography sx={{ fontSize: 13, fontWeight: 650, color: theme.ink }}>
             {product.name}
           </Typography>
-          <Typography fontSize={12} color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography sx={{ fontSize: 11.5, color: theme.muted, mt: 0.4 }}>
             {product.reason}
           </Typography>
         </Box>
@@ -150,19 +151,14 @@ function ProductCards({ products }) {
 function HandoffActions({ handoff }) {
   if (!handoff) return null;
   return (
-    <Stack direction="row" gap={1.25} sx={{ alignSelf: "flex-start" }}>
+    <Stack direction="row" gap={1} sx={{ alignSelf: "flex-start" }}>
       <Box
         component="a"
         href={handoff.phoneHref}
         sx={{
-          textDecoration: "none",
-          fontWeight: 800,
-          fontSize: 13,
-          px: 2,
-          py: 1,
-          borderRadius: 2,
-          border: "1px solid rgba(16, 24, 40, 0.15)",
-          color: "#182230",
+          textDecoration: "none", fontWeight: 650, fontSize: 12.5,
+          px: 1.75, py: 0.9, borderRadius: `${theme.radiusSmall}px`,
+          border: `1px solid ${theme.border}`, color: theme.ink,
         }}
       >
         Call {handoff.phoneDisplay}
@@ -173,17 +169,12 @@ function HandoffActions({ handoff }) {
         target="_blank"
         rel="noopener noreferrer"
         sx={{
-          textDecoration: "none",
-          fontWeight: 800,
-          fontSize: 13,
-          px: 2,
-          py: 1,
-          borderRadius: 2,
-          bgcolor: "#209d58",
-          color: "#fff",
+          textDecoration: "none", fontWeight: 650, fontSize: 12.5,
+          px: 1.75, py: 0.9, borderRadius: `${theme.radiusSmall}px`,
+          bgcolor: theme.accent, color: "#fff",
         }}
       >
-        Chat here
+        WhatsApp
       </Box>
     </Stack>
   );
@@ -192,27 +183,29 @@ function HandoffActions({ handoff }) {
 function Transcript({ detail, loading }) {
   if (loading) return <TranscriptSkeleton />;
   if (!detail) {
-    return <EmptyPanel icon={ForumRoundedIcon} title="Select a conversation" description="Pick a session on the left to view its transcript." />;
+    return <EmptyPanel title="Select a conversation" description="Pick a session on the left to view its transcript." />;
   }
   return (
-    <Stack sx={{ p: 2.5, gap: 1.5, overflowY: "auto", height: "100%" }}>
+    <Stack sx={{ p: 3, gap: 1.25, overflowY: "auto", height: "100%" }}>
       {detail.messages.map((message) => (
         <React.Fragment key={message._id}>
           <Box
             sx={{
               alignSelf: message.role === "user" ? "flex-end" : "flex-start",
               maxWidth: "75%",
-              bgcolor: message.role === "user" ? "#182230" : "#f2f4f7",
-              color: message.role === "user" ? "#fff" : "#101828",
-              borderRadius: 2.5,
-              px: 2,
-              py: 1.25,
+              background: message.role === "user" ? theme.chatUserGradient : theme.chatAssistantBg,
+              color: message.role === "user" ? "#fff" : theme.chatAssistantText,
+              borderRadius: "17px",
+              borderBottomRightRadius: message.role === "user" ? "6px" : "17px",
+              borderBottomLeftRadius: message.role === "assistant" ? "6px" : "17px",
+              px: 1.75,
+              py: 1.1,
             }}
           >
-            <Typography fontSize={14} sx={{ whiteSpace: "pre-wrap" }}>
+            <Typography sx={{ fontSize: 13.5, whiteSpace: "pre-wrap" }}>
               {message.text}
             </Typography>
-            <Typography fontSize={11} sx={{ mt: 0.5, opacity: 0.7 }}>
+            <Typography sx={{ fontSize: 10.5, mt: 0.4, opacity: 0.65 }}>
               {formatTime(message.createdAt)}
             </Typography>
           </Box>
@@ -227,7 +220,7 @@ function Transcript({ detail, loading }) {
 function CustomerProfile({ detail, loading }) {
   if (loading) return <CustomerProfileSkeleton />;
   if (!detail) {
-    return <EmptyPanel icon={PersonRoundedIcon} title="No profile data" description="Location, health concern, language, and visit history will show here." />;
+    return <EmptyPanel title="No profile data" description="Location, health concern, language, and visit history will show here." />;
   }
   const { conversation, visitor } = detail;
   const location = visitor?.location
@@ -250,13 +243,13 @@ function CustomerProfile({ detail, loading }) {
     ["Resolution", conversation.resolutionStatus],
   ];
   return (
-    <Stack gap={1.5}>
+    <Stack gap={1.75}>
       {rows.map(([label, value]) => (
         <Box key={label}>
-          <Typography fontSize={11.5} color="text.secondary" fontWeight={800} sx={{ textTransform: "uppercase" }}>
+          <Typography sx={{ fontSize: 10.5, fontWeight: 650, letterSpacing: "0.05em", textTransform: "uppercase", color: theme.faint }}>
             {label}
           </Typography>
-          <Typography fontSize={14} fontWeight={700}>
+          <Typography sx={{ fontSize: 13.5, fontWeight: 550, color: theme.ink, mt: 0.15 }}>
             {value}
           </Typography>
         </Box>
@@ -295,36 +288,26 @@ function WidgetConversations() {
   }, [selectedId]);
 
   return (
-    <Box sx={{ maxWidth: 1440, mx: "auto" }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Box>
-          <Typography fontSize={24} fontWeight={950}>
-            Customer Conversations
-          </Typography>
-          <Typography color="text.secondary" fontSize={13.5}>
-            Browse and review every AI widget conversation
-          </Typography>
-        </Box>
-      </Stack>
-
+    <Box sx={{ maxWidth: 1320 }}>
       {error && (
         <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>
           Couldn't load conversations: {error}
         </Alert>
       )}
 
-      <Stack direction={{ xs: "column", md: "row" }} gap={2} sx={{ height: { md: 640 } }}>
-        <Paper
-          elevation={0}
+      <Stack direction={{ xs: "column", md: "row" }} gap={2} sx={{ height: { xs: "auto", md: 620 } }}>
+        <Box
           sx={{
-            width: { xs: "100%", md: 300 },
+            width: { xs: "100%", md: 260, lg: 280 },
             flexShrink: 0,
-            borderRadius: 3,
-            border: "1px solid rgba(16, 24, 40, 0.08)",
-            p: 2,
+            height: { xs: 320, md: "auto" },
+            borderRadius: `${theme.radius}px`,
+            border: `1px solid ${theme.border}`,
+            bgcolor: theme.surface,
+            p: 1.75,
             display: "flex",
             flexDirection: "column",
-            gap: 1.5,
+            gap: 1.25,
           }}
         >
           <TextField
@@ -332,44 +315,51 @@ function WidgetConversations() {
             placeholder="Search session id..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            InputProps={{ endAdornment: <InputAdornment position="end"><SearchRoundedIcon fontSize="small" /></InputAdornment> }}
+            InputProps={{
+              endAdornment: <InputAdornment position="end"><SearchRoundedIcon sx={{ fontSize: 17, color: theme.faint }} /></InputAdornment>,
+              sx: { fontSize: 13, borderRadius: `${theme.radiusSmall}px` },
+            }}
           />
           <Box sx={{ flex: 1, overflowY: "auto" }}>
             {loading
               ? <ConversationListSkeleton />
               : <ConversationList conversations={conversations} selectedId={selectedId} onSelect={setSelectedId} search={search} />}
           </Box>
-        </Paper>
+        </Box>
 
-        <Paper
-          elevation={0}
+        <Box
           sx={{
             flex: 1,
-            borderRadius: 3,
-            border: "1px solid rgba(16, 24, 40, 0.08)",
+            minWidth: 0,
+            height: { xs: 420, md: "auto" },
+            borderRadius: `${theme.radius}px`,
+            border: `1px solid ${theme.border}`,
+            bgcolor: theme.surface,
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
           }}
         >
           <Transcript detail={detail} loading={detailLoading} />
-        </Paper>
+        </Box>
 
-        <Paper
-          elevation={0}
+        <Box
           sx={{
-            width: { xs: "100%", md: 320 },
+            width: { xs: "100%", md: 260, lg: 300 },
             flexShrink: 0,
-            borderRadius: 3,
-            border: "1px solid rgba(16, 24, 40, 0.08)",
+            height: { xs: 320, md: "auto" },
+            overflowY: "auto",
+            borderRadius: `${theme.radius}px`,
+            border: `1px solid ${theme.border}`,
+            bgcolor: theme.surface,
             p: 2.5,
           }}
         >
-          <Typography fontWeight={950} fontSize={16} sx={{ mb: 1.5 }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 650, color: theme.ink, mb: 2 }}>
             Customer Profile
           </Typography>
           <CustomerProfile detail={detail} loading={detailLoading} />
-        </Paper>
+        </Box>
       </Stack>
     </Box>
   );
