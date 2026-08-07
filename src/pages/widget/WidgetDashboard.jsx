@@ -3,8 +3,8 @@ import {
   Alert,
   Box,
   ButtonBase,
-  CircularProgress,
   Paper,
+  Skeleton,
   Stack,
   Typography,
 } from "@mui/material";
@@ -62,6 +62,55 @@ function KpiCard({ label, icon: Icon, color, value, suffix }) {
         {label}
       </Typography>
     </Paper>
+  );
+}
+
+function KpiCardSkeleton() {
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        flex: "1 1 220px",
+        p: 2.25,
+        borderRadius: 3,
+        border: "1px solid rgba(16, 24, 40, 0.08)",
+      }}
+    >
+      <Skeleton variant="circular" width={36} height={36} />
+      <Skeleton variant="text" sx={{ fontSize: 28, width: "50%", mt: 1.5 }} />
+      <Skeleton variant="text" sx={{ fontSize: 13, width: "75%" }} />
+    </Paper>
+  );
+}
+
+function RankedListSkeleton({ rows = 4 }) {
+  return (
+    <Stack gap={1.25} sx={{ mt: 2.5 }}>
+      {Array.from({ length: rows }, (_, index) => (
+        <Box key={index}>
+          <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+            <Skeleton variant="text" sx={{ fontSize: 13, width: `${55 - index * 8}%` }} />
+            <Skeleton variant="text" sx={{ fontSize: 13, width: 24 }} />
+          </Stack>
+          <Skeleton variant="rounded" height={8} sx={{ borderRadius: 999 }} />
+        </Box>
+      ))}
+    </Stack>
+  );
+}
+
+function ProductRecommendationsSkeleton({ rows = 4 }) {
+  return (
+    <Stack gap={1.5} sx={{ mt: 2.5 }}>
+      {Array.from({ length: rows }, (_, index) => (
+        <Stack key={index} direction="row" alignItems="center" gap={2}>
+          <Skeleton variant="text" sx={{ fontSize: 13.5, flex: 1 }} />
+          <Skeleton variant="text" sx={{ fontSize: 13.5, width: 90 }} />
+          <Skeleton variant="text" sx={{ fontSize: 13.5, width: 70 }} />
+          <Skeleton variant="text" sx={{ fontSize: 13.5, width: 60 }} />
+        </Stack>
+      ))}
+    </Stack>
   );
 }
 
@@ -235,7 +284,6 @@ function WidgetDashboard() {
             Track performance and insights across your business
           </Typography>
         </Box>
-        {loading && <CircularProgress size={20} />}
       </Stack>
 
       <Box
@@ -287,13 +335,15 @@ function WidgetDashboard() {
       {activeSubTab === "Overview" && (
         <>
           <Stack direction="row" flexWrap="wrap" gap={2} mb={2}>
-            {kpis.map((kpi) => (
-              <KpiCard
-                key={kpi.key}
-                {...kpi}
-                value={kpi.overviewKey && overview ? overview[kpi.overviewKey] : undefined}
-              />
-            ))}
+            {loading
+              ? kpis.map((kpi) => <KpiCardSkeleton key={kpi.key} />)
+              : kpis.map((kpi) => (
+                  <KpiCard
+                    key={kpi.key}
+                    {...kpi}
+                    value={kpi.overviewKey && overview ? overview[kpi.overviewKey] : undefined}
+                  />
+                ))}
           </Stack>
 
           <Stack direction="row" flexWrap="wrap" gap={2}>
@@ -302,41 +352,53 @@ function WidgetDashboard() {
               description="Conversation → Add to Cart → Order journey (needs order attribution, not built yet)"
             />
             <PanelCard title="Top 5 User Intents" description="Routing categories the AI assigned to conversations">
-              <RankedList
-                items={overview?.topIntents?.map((item) => ({ label: item.intent, count: item.count }))}
-                emptyLabel="No conversations yet"
-              />
+              {loading ? <RankedListSkeleton /> : (
+                <RankedList
+                  items={overview?.topIntents?.map((item) => ({ label: item.intent, count: item.count }))}
+                  emptyLabel="No conversations yet"
+                />
+              )}
             </PanelCard>
             <PanelCard title="Top Health Concerns" description="Conditions customers have disclosed in chat">
-              <RankedList
-                items={overview?.topHealthConcerns?.map((item) => ({ label: item.concern, count: item.count }))}
-                emptyLabel="No health concerns disclosed yet"
-                barColor="#b91c1c"
-              />
+              {loading ? <RankedListSkeleton /> : (
+                <RankedList
+                  items={overview?.topHealthConcerns?.map((item) => ({ label: item.concern, count: item.count }))}
+                  emptyLabel="No health concerns disclosed yet"
+                  barColor="#b91c1c"
+                />
+              )}
             </PanelCard>
             <PanelCard title="Handoff Reasons" description="Why conversations escalated to a human expert">
-              <RankedList
-                items={overview?.handoffReasons?.map((item) => ({ label: item.reason, count: item.count }))}
-                emptyLabel="No handoffs yet"
-                barColor="#b45309"
-              />
+              {loading ? <RankedListSkeleton /> : (
+                <RankedList
+                  items={overview?.handoffReasons?.map((item) => ({ label: item.reason, count: item.count }))}
+                  emptyLabel="No handoffs yet"
+                  barColor="#b45309"
+                />
+              )}
             </PanelCard>
             <PanelCard title="Top Interaction Pages" description="Pages where chat conversations started">
-              <RankedList
-                items={overview?.topPages?.map((item) => ({ label: item.page, count: item.count }))}
-                emptyLabel="No conversations yet"
-                barColor="#0f766e"
-              />
+              {loading ? <RankedListSkeleton /> : (
+                <RankedList
+                  items={overview?.topPages?.map((item) => ({ label: item.page, count: item.count }))}
+                  emptyLabel="No conversations yet"
+                  barColor="#0f766e"
+                />
+              )}
             </PanelCard>
             <PanelCard title="Top Traffic Sources" description="UTM source parsed from the page URL, where present">
-              <RankedList
-                items={overview?.topTrafficSources?.map((item) => ({ label: item.source, count: item.count }))}
-                emptyLabel="No UTM-tagged traffic yet"
-                barColor="#7c3aed"
-              />
+              {loading ? <RankedListSkeleton /> : (
+                <RankedList
+                  items={overview?.topTrafficSources?.map((item) => ({ label: item.source, count: item.count }))}
+                  emptyLabel="No UTM-tagged traffic yet"
+                  barColor="#7c3aed"
+                />
+              )}
             </PanelCard>
             <PanelCard title="Product Recommendations" description="How often each recommended product was actually clicked">
-              <ProductRecommendationsTable products={overview?.productRecommendations} />
+              {loading
+                ? <ProductRecommendationsSkeleton />
+                : <ProductRecommendationsTable products={overview?.productRecommendations} />}
             </PanelCard>
           </Stack>
         </>
