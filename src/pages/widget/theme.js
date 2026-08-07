@@ -21,4 +21,7 @@ export const theme = {
   chatUserGradient: "linear-gradient(145deg, #7d4e99, #70408f)",
   chatAssistantBg: "#f7f4f9",
   chatAssistantText: "#302637",
+  widgetBorder: "#ebe5ee",
+  widgetPurpleDark: "#57316f",
+  widgetWhatsappGreen: "#209d58",
 };
