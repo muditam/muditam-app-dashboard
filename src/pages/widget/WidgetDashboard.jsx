@@ -16,7 +16,7 @@ const kpis = [
   { key: "totalConversations", label: "Total Conversations", overviewKey: "totalConversations", icon: ForumRoundedIcon, color: "#2563eb" },
   { key: "assistedOrderValue", label: "Assisted Order Value", overviewKey: null, icon: PaidRoundedIcon, color: "#0f766e" },
   { key: "orderValueUtm", label: "Order Value (UTM)", overviewKey: null, icon: TrendingUpRoundedIcon, color: "#7c3aed" },
-  { key: "addToCartAssisted", label: "Add to Cart Assisted", overviewKey: null, icon: ShoppingCartRoundedIcon, color: "#c2410c" },
+  { key: "addToCartAssisted", label: "Add to Cart Assisted", overviewKey: "addToCartAssisted", icon: ShoppingCartRoundedIcon, color: "#c2410c" },
   { key: "resolutionRate", label: "Resolution Rate", overviewKey: "resolutionRate", suffix: "%", icon: CheckCircleRoundedIcon, color: "#15803d" },
   { key: "leadCaptures", label: "Lead Captures", overviewKey: "leadCaptures", icon: MailRoundedIcon, color: "#4338ca" },
   { key: "interactionRate", label: "Interaction %", overviewKey: null, icon: GroupsRoundedIcon, color: "#0e7490" },
@@ -249,8 +249,8 @@ function WidgetDashboard() {
       {activeSubTab === "Overview" && (
         <>
           <Typography sx={{ fontSize: 11.5, color: theme.faint, mb: 2 }}>
-            Total Conversations, Resolution Rate, Lead Captures, and Top Intents are live. Order-value metrics
-            need cart/order attribution that isn't built yet.
+            Total Conversations, Resolution Rate, Lead Captures, Add to Cart Assisted, and Top Intents are live.
+            Assisted/UTM Order Value need real order data, which isn't connected yet.
           </Typography>
 
           <Stack direction="row" flexWrap="wrap" gap={2} mb={4}>
