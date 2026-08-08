@@ -19,7 +19,7 @@ const kpis = [
   { key: "addToCartAssisted", label: "Add to Cart Assisted", overviewKey: "addToCartAssisted", icon: ShoppingCartRoundedIcon, color: "#c2410c" },
   { key: "resolutionRate", label: "Resolution Rate", overviewKey: "resolutionRate", suffix: "%", icon: CheckCircleRoundedIcon, color: "#15803d" },
   { key: "leadCaptures", label: "Lead Captures", overviewKey: "leadCaptures", icon: MailRoundedIcon, color: "#4338ca" },
-  { key: "interactionRate", label: "Interaction %", overviewKey: null, icon: GroupsRoundedIcon, color: "#0e7490" },
+  { key: "interactionRate", label: "Interaction %", overviewKey: "interactionRate", suffix: "%", icon: GroupsRoundedIcon, color: "#0e7490" },
 ];
 
 function SectionLabel({ children }) {
@@ -249,7 +249,7 @@ function WidgetDashboard() {
       {activeSubTab === "Overview" && (
         <>
           <Typography sx={{ fontSize: 11.5, color: theme.faint, mb: 2 }}>
-            Total Conversations, Resolution Rate, Lead Captures, Add to Cart Assisted, and Top Intents are live.
+            Total Conversations, Resolution Rate, Lead Captures, Add to Cart Assisted, Interaction %, and Top Intents are live.
             Assisted/UTM Order Value need real order data, which isn't connected yet.
           </Typography>
 

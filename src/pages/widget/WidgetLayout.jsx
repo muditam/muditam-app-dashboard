@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { theme } from "./theme";
+import WidgetLogin from "./WidgetLogin";
+import { isAuthenticated, logout } from "./widgetAuth";
 
 const navItems = [
   {
@@ -22,6 +24,17 @@ function WidgetLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const current = navItems.find((item) => location.pathname.startsWith(item.path)) ?? navItems[0];
+  const [authed, setAuthed] = useState(() => isAuthenticated());
+
+  useEffect(() => {
+    const handleUnauthorized = () => setAuthed(false);
+    window.addEventListener("muditam-widget-unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("muditam-widget-unauthorized", handleUnauthorized);
+  }, []);
+
+  if (!authed) {
+    return <WidgetLogin onSuccess={() => setAuthed(true)} />;
+  }
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: theme.canvas }}>
@@ -41,7 +54,7 @@ function WidgetLayout() {
             <Typography sx={{ fontSize: 12.5, fontWeight: 650, color: theme.faint, letterSpacing: "0.01em" }}>
               Muditam AI
             </Typography>
-            <Stack direction="row" gap={{ xs: 2, sm: 3 }}>
+            <Stack direction="row" alignItems="center" gap={{ xs: 2, sm: 3 }}>
               {navItems.map((item) => {
                 const active = location.pathname.startsWith(item.path);
                 return (
@@ -61,6 +74,12 @@ function WidgetLayout() {
                   </Box>
                 );
               })}
+              <Box
+                onClick={() => { logout(); setAuthed(false); }}
+                sx={{ cursor: "pointer", fontSize: 12.5, fontWeight: 550, color: theme.faint, pb: 0.5, "&:hover": { color: theme.muted } }}
+              >
+                Log out
+              </Box>
             </Stack>
           </Stack>
 
