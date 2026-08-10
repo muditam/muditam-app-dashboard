@@ -6,10 +6,12 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { theme } from "./theme";
 
 const SIZE = {
-  small: { width: 318, height: 470, launcher: 48 },
-  medium: { width: 342, height: 510, launcher: 56 },
-  large: { width: 366, height: 550, launcher: 64 },
+  small: { width: 318, height: 470 },
+  medium: { width: 342, height: 510 },
+  large: { width: 366, height: 550 },
 };
+
+const LAUNCHER_SIZE = { small: 48, medium: 56, large: 76 };
 
 function colorMix(hex, target, amount) {
   const value = hex?.replace("#", "") || "70408f";
@@ -56,6 +58,7 @@ function Launcher({ config, accent, nudgeBackground, nudgeTextColor, nudgeBorder
 function WidgetLivePreview({ config }) {
   const [open, setOpen] = useState(true);
   const size = SIZE[config.widgetSize] || SIZE.medium;
+  const launcherSize = LAUNCHER_SIZE[config.launcherSize] || LAUNCHER_SIZE.medium;
   const accent = contrastSafeAccent(config.themeColor);
   const dark = colorMix(accent, "black", 0.18);
   const soft = colorMix(accent, "white", 0.92);
@@ -114,7 +117,7 @@ function WidgetLivePreview({ config }) {
           </Box>
         )}
 
-        <Launcher config={config} accent={accent} nudgeBackground={nudgeBackground} nudgeTextColor={nudgeTextColor} nudgeBorder={nudgeBorder} size={size.launcher} showNudge={!open} onClick={() => setOpen((current) => !current)} />
+        <Launcher config={config} accent={accent} nudgeBackground={nudgeBackground} nudgeTextColor={nudgeTextColor} nudgeBorder={nudgeBorder} size={launcherSize} showNudge={!open} onClick={() => setOpen((current) => !current)} />
       </Box>
     </Box>
   );

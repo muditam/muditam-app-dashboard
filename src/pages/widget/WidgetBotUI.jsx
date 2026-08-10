@@ -373,6 +373,7 @@ function WidgetBotUI() {
           <Stack gap={3.5}>
             <Box>
               <FieldLabel>Widget Size</FieldLabel>
+              <Typography sx={{ mb: 1.25, fontSize: 12, color: theme.faint }}>Controls the opened chat panel.</Typography>
               <Stack direction="row" gap={1.25}>
                 {["small", "medium", "large"].map((size) => (
                   <ChoiceButton
@@ -380,6 +381,21 @@ function WidgetBotUI() {
                     label={size[0].toUpperCase() + size.slice(1)}
                     selected={config.widgetSize === size}
                     onClick={() => updateField("widgetSize", size)}
+                  />
+                ))}
+              </Stack>
+            </Box>
+
+            <Box>
+              <FieldLabel>Launcher Size</FieldLabel>
+              <Typography sx={{ mb: 1.25, fontSize: 12, color: theme.faint }}>Controls only the circular chat icon.</Typography>
+              <Stack direction="row" gap={1.25}>
+                {["small", "medium", "large"].map((size) => (
+                  <ChoiceButton
+                    key={size}
+                    label={size[0].toUpperCase() + size.slice(1)}
+                    selected={(config.launcherSize || "medium") === size}
+                    onClick={() => updateField("launcherSize", size)}
                   />
                 ))}
               </Stack>
