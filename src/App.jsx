@@ -7,6 +7,8 @@ import DietPlanEditor from "./pages/DietPlanEditor";
 import WidgetLayout from "./pages/widget/WidgetLayout";
 import WidgetDashboard from "./pages/widget/WidgetDashboard";
 import WidgetConversations from "./pages/widget/WidgetConversations";
+import WidgetBotUI from "./pages/widget/WidgetBotUI";
+import WidgetBotFlow from "./pages/widget/WidgetBotFlow";
 
 function App() {
   return (
@@ -19,6 +21,8 @@ function App() {
           <Route index element={<Navigate to="/widget/dashboard" replace />} />
           <Route path="dashboard" element={<WidgetDashboard />} />
           <Route path="conversations" element={<WidgetConversations />} />
+          <Route path="bot-ui" element={<WidgetBotUI />} />
+          <Route path="bot-flow" element={<WidgetBotFlow />} />
         </Route>
         <Route path="/" element={<Dashboard />} />
       </Routes>
