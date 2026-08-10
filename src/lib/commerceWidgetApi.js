@@ -4,13 +4,25 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://muditam-app-backe
 
 async function request(path, options = {}) {
   const token = getWidgetToken();
-  const response = await fetch(`${API_BASE}${path}`, {
+  const requestOptions = {
     ...options,
     headers: {
       ...(options.headers || {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-  });
+  };
+  const isReadOnly = !requestOptions.method || requestOptions.method === 'GET';
+  let response;
+  for (let attempt = 0; attempt < (isReadOnly ? 2 : 1); attempt += 1) {
+    try {
+      response = await fetch(`${API_BASE}${path}`, requestOptions);
+      break;
+    } catch (error) {
+      if (!isReadOnly || attempt === 1) throw error;
+      await new Promise((resolve) => window.setTimeout(resolve, 450));
+    }
+  }
+  if (!response) throw new Error('Could not connect to the server');
   if (response.status === 401) {
     clearWidgetToken();
     window.dispatchEvent(new Event("muditam-widget-unauthorized"));
