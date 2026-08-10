@@ -8,9 +8,10 @@ import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import MailRoundedIcon from "@mui/icons-material/MailRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import { commerceWidgetApi } from "../../lib/commerceWidgetApi";
+import { DateRangeFilter } from "./DateRangeFilter";
 import { theme } from "./theme";
 
-const subTabs = ["Overview", "Sales", "Support"];
+const subTabs = ["Overview", "Sales"];
 
 const kpis = [
   { key: "totalConversations", label: "Total Conversations", overviewKey: "totalConversations", icon: ForumRoundedIcon, color: "#2563eb" },
@@ -204,40 +205,54 @@ function WidgetDashboard() {
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dateRange, setDateRange] = useState(undefined);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    commerceWidgetApi.getOverview()
+    commerceWidgetApi.getOverview({
+      from: dateRange?.from ? dateRange.from.toISOString() : undefined,
+      to: dateRange?.to ? dateRange.to.toISOString() : undefined,
+    })
       .then((data) => { if (!cancelled) setOverview(data); })
       .catch((err) => { if (!cancelled) setError(err.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [dateRange]);
 
   return (
     <Box sx={{ maxWidth: 1240 }}>
-      <Stack direction="row" gap={3} sx={{ borderBottom: `1px solid ${theme.border}`, mb: 3.5 }}>
-        {subTabs.map((tab) => {
-          const selected = activeSubTab === tab;
-          return (
-            <Box
-              key={tab}
-              onClick={() => setActiveSubTab(tab)}
-              sx={{
-                pb: 1.5,
-                cursor: "pointer",
-                fontSize: 13.5,
-                fontWeight: selected ? 650 : 500,
-                color: selected ? theme.ink : theme.muted,
-                borderBottom: selected ? `2px solid ${theme.accent}` : "2px solid transparent",
-                mb: "-1px",
-              }}
-            >
-              {tab}
-            </Box>
-          );
-        })}
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ borderBottom: `1px solid ${theme.border}`, mb: 3.5 }}
+      >
+        <Stack direction="row" gap={3}>
+          {subTabs.map((tab) => {
+            const selected = activeSubTab === tab;
+            return (
+              <Box
+                key={tab}
+                onClick={() => setActiveSubTab(tab)}
+                sx={{
+                  pb: 1.5,
+                  cursor: "pointer",
+                  fontSize: 13.5,
+                  fontWeight: selected ? 650 : 500,
+                  color: selected ? theme.ink : theme.muted,
+                  borderBottom: selected ? `2px solid ${theme.accent}` : "2px solid transparent",
+                  mb: "-1px",
+                }}
+              >
+                {tab}
+              </Box>
+            );
+          })}
+        </Stack>
+        <Box sx={{ mb: 1 }}>
+          <DateRangeFilter range={dateRange} onChange={setDateRange} />
+        </Box>
       </Stack>
 
       {error && (
