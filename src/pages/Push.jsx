@@ -11,7 +11,9 @@ import {
   Divider,
   FormControlLabel,
   Grid,
+  InputAdornment,
   Paper,
+  MenuItem,
   Radio,
   RadioGroup,
   Snackbar,
@@ -22,15 +24,22 @@ import {
   Typography,
 } from "@mui/material";
 import CampaignIcon from "@mui/icons-material/Campaign";
+import CancelScheduleSendIcon from "@mui/icons-material/CancelScheduleSend";
 import DevicesIcon from "@mui/icons-material/Devices";
+import EditIcon from "@mui/icons-material/Edit";
 import HistoryIcon from "@mui/icons-material/History";
 import LinkIcon from "@mui/icons-material/Link";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import SendIcon from "@mui/icons-material/Send";
+import SearchIcon from "@mui/icons-material/Search";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://muditam-app-backend-ca1c8b03db09.herokuapp.com";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  || (import.meta.env.DEV
+    ? "http://localhost:3001"
+    : "https://muditam-app-backend-ca1c8b03db09.herokuapp.com");
 
 const normalizePhone = (value = "") => value.replace(/\D/g, "").slice(-10);
 const toISO = (value) => (value ? new Date(value).toISOString() : null);
@@ -47,6 +56,7 @@ const statCards = [
   { key: "totalDevices", label: "Registered devices", icon: DevicesIcon },
   { key: "scheduledCount", label: "Scheduled campaigns", icon: ScheduleIcon },
   { key: "sentCount", label: "Sent campaigns", icon: HistoryIcon },
+  { key: "failedCount", label: "Failed campaigns", icon: CampaignIcon },
 ];
 
 const quickLinks = [
@@ -58,6 +68,7 @@ const quickLinks = [
 ];
 
 export default function Push() {
+  const [adminToken] = useState("");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [notificationLink, setNotificationLink] = useState("");
@@ -69,10 +80,33 @@ export default function Push() {
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [tempLink, setTempLink] = useState("");
   const [platformTab, setPlatformTab] = useState(0);
+  const [campaignFilter, setCampaignFilter] = useState("all");
+  const [campaignSearch, setCampaignSearch] = useState("");
+  const [loadingMeta, setLoadingMeta] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [testSending, setTestSending] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [campaignActionLoading, setCampaignActionLoading] = useState(false);
+  const [audiencePreview, setAudiencePreview] = useState(null);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [testPhonesText, setTestPhonesText] = useState("");
+  const [editForm, setEditForm] = useState({
+    title: "",
+    message: "",
+    url: "",
+    audienceType: "phones",
+    phoneNumbersText: "",
+    scheduledAt: "",
+  });
   const [stats, setStats] = useState({
     totalDevices: 0,
     scheduledCount: 0,
     sentCount: 0,
+    failedCount: 0,
+    latestCampaignAt: null,
   });
   const [campaigns, setCampaigns] = useState([]);
   const [snackbar, setSnackbar] = useState({
@@ -88,6 +122,10 @@ export default function Push() {
     () => phonesText.split(/[\s,;]+/).map(normalizePhone).filter(Boolean),
     [phonesText]
   );
+  const testPhoneNumbers = useMemo(
+    () => testPhonesText.split(/[\s,;]+/).map(normalizePhone).filter(Boolean),
+    [testPhonesText]
+  );
 
   const audienceLabel =
     audienceType === "all"
@@ -96,15 +134,67 @@ export default function Push() {
 
   const previewTitle = title || "Notification title";
   const previewBody = message || "Your notification message will appear here.";
+  const sendButtonLabel = sending
+    ? "Processing..."
+    : sendOption === "schedule"
+      ? "Schedule Campaign"
+      : "Send Campaign";
+  const sendHelperText = sendOption === "schedule"
+    ? (scheduledAt ? `Will queue for ${formatDateTime(toISO(scheduledAt))}` : "Choose a future date and time")
+    : "Campaign will be delivered immediately after confirmation";
+  const filteredCampaigns = useMemo(() => {
+    const query = campaignSearch.trim().toLowerCase();
+    return campaigns.filter((campaign) => {
+      if (campaignFilter !== "all" && campaign.status !== campaignFilter) return false;
+      if (!query) return true;
+      const haystack = [
+        campaign.title,
+        campaign.message,
+        campaign.status,
+        campaign.url,
+        campaign.audienceType,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [campaignFilter, campaignSearch, campaigns]);
 
   const openSnackbar = (type, messageText) =>
     setSnackbar({ open: true, type, message: messageText });
 
-  const loadPushMeta = async () => {
+  const toDateTimeLocalValue = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    const offset = date.getTimezoneOffset();
+    const local = new Date(date.getTime() - offset * 60 * 1000);
+    return local.toISOString().slice(0, 16);
+  };
+
+  const authenticatedFetch = async (path, options = {}, token = adminToken) => {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...options.headers,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(response.status === 403 ? "This action is currently unavailable" : "Authentication failed");
+    }
+
+    return response;
+  };
+
+  const loadPushMeta = async (token = adminToken) => {
     try {
+      setLoadingMeta(true);
       const [statsRes, campaignsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/push/stats`),
-        fetch(`${API_BASE_URL}/api/push/campaigns`),
+        authenticatedFetch("/api/push/stats", {}, token),
+        authenticatedFetch("/api/push/campaigns", {}, token),
       ]);
 
       if (statsRes.ok) setStats(await statsRes.json());
@@ -112,14 +202,18 @@ export default function Push() {
         const data = await campaignsRes.json();
         setCampaigns(data.campaigns || []);
       }
-    } catch {
-      // Metadata is secondary; composing/sending should remain usable.
+    } catch (error) {
+      if (token) openSnackbar("error", error.message || "Could not load push campaigns");
+    } finally {
+      setLoadingMeta(false);
     }
   };
 
   useEffect(() => {
-    loadPushMeta();
-  }, []);
+    loadPushMeta(adminToken);
+    // Temporary open access for dashboard notifications.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminToken]);
 
   const validateCampaign = () => {
     if (!title.trim()) return "Title is required";
@@ -148,9 +242,8 @@ export default function Push() {
 
     try {
       setSending(true);
-      const res = await fetch(`${API_BASE_URL}/api/push/send`, {
+      const res = await authenticatedFetch("/api/push/send", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
           message: message.trim(),
@@ -175,6 +268,162 @@ export default function Push() {
       openSnackbar("error", err.message || "Something went wrong");
     } finally {
       setSending(false);
+    }
+  };
+
+  const buildCampaignPayload = () => ({
+    title: title.trim(),
+    message: message.trim(),
+    url: notificationLink || undefined,
+    audienceType,
+    phoneNumbers,
+    scheduleOption: sendOption,
+    scheduledAt: sendOption === "schedule" ? toISO(scheduledAt) : null,
+  });
+
+  const handlePreviewAudience = async () => {
+    try {
+      setPreviewLoading(true);
+      const res = await authenticatedFetch("/api/push/preview", {
+        method: "POST",
+        body: JSON.stringify(buildCampaignPayload()),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to preview audience");
+      setAudiencePreview(data);
+      setPreviewDialogOpen(true);
+    } catch (err) {
+      openSnackbar("error", err.message || "Could not preview audience");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const loadCampaignDetail = async (campaignId) => {
+    try {
+      setDetailLoading(true);
+      const res = await authenticatedFetch(`/api/push/campaigns/${campaignId}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to load campaign");
+      setSelectedCampaign(data.campaign);
+      setDetailDialogOpen(true);
+    } catch (err) {
+      openSnackbar("error", err.message || "Could not load campaign");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const openEditCampaign = (campaign) => {
+    setSelectedCampaign(campaign);
+    setEditForm({
+      title: campaign.title || "",
+      message: campaign.message || "",
+      url: campaign.url || "",
+      audienceType: campaign.audienceType || "phones",
+      phoneNumbersText: Array.isArray(campaign.phoneNumbers) ? campaign.phoneNumbers.join(", ") : "",
+      scheduledAt: toDateTimeLocalValue(campaign.scheduledAt),
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateScheduledCampaign = async () => {
+    if (!selectedCampaign?._id) return;
+
+    const editedPhoneNumbers = editForm.phoneNumbersText
+      .split(/[\s,;]+/)
+      .map(normalizePhone)
+      .filter(Boolean);
+
+    if (!editForm.title.trim() || !editForm.message.trim()) {
+      openSnackbar("error", "Title and message are required");
+      return;
+    }
+    if (editForm.audienceType === "phones" && !editedPhoneNumbers.length) {
+      openSnackbar("error", "Enter at least one valid phone number");
+      return;
+    }
+    if (!editForm.scheduledAt) {
+      openSnackbar("error", "Choose a future schedule time");
+      return;
+    }
+
+    try {
+      setCampaignActionLoading(true);
+      const res = await authenticatedFetch(`/api/push/campaigns/${selectedCampaign._id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          title: editForm.title.trim(),
+          message: editForm.message.trim(),
+          url: editForm.url.trim(),
+          audienceType: editForm.audienceType,
+          phoneNumbers: editedPhoneNumbers,
+          scheduleOption: "schedule",
+          scheduledAt: toISO(editForm.scheduledAt),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update campaign");
+      setEditDialogOpen(false);
+      setSelectedCampaign(data.campaign);
+      openSnackbar("success", "Scheduled campaign updated");
+      loadPushMeta();
+    } catch (err) {
+      openSnackbar("error", err.message || "Could not update campaign");
+    } finally {
+      setCampaignActionLoading(false);
+    }
+  };
+
+  const handleCancelCampaign = async (campaign) => {
+    try {
+      setCampaignActionLoading(true);
+      const res = await authenticatedFetch(`/api/push/campaigns/${campaign._id}/cancel`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to cancel campaign");
+      if (selectedCampaign?._id === campaign._id) {
+        setSelectedCampaign(data.campaign);
+      }
+      setEditDialogOpen(false);
+      openSnackbar("success", "Scheduled campaign cancelled");
+      loadPushMeta();
+    } catch (err) {
+      openSnackbar("error", err.message || "Could not cancel campaign");
+    } finally {
+      setCampaignActionLoading(false);
+    }
+  };
+
+  const handleSendTest = async () => {
+    if (!title.trim() || !message.trim()) {
+      openSnackbar("error", "Add a title and message before sending a test");
+      return;
+    }
+    if (!testPhoneNumbers.length) {
+      openSnackbar("error", "Enter at least one valid test phone number");
+      return;
+    }
+
+    try {
+      setTestSending(true);
+      const res = await authenticatedFetch("/api/push/test", {
+        method: "POST",
+        body: JSON.stringify({
+          title: title.trim(),
+          message: message.trim(),
+          url: notificationLink || undefined,
+          phoneNumbers: testPhoneNumbers,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to send test notification");
+      openSnackbar("success", `Test sent to ${data.sent || 0} devices`);
+    } catch (err) {
+      openSnackbar("error", err.message || "Could not send test notification");
+    } finally {
+      setTestSending(false);
     }
   };
 
@@ -208,6 +457,24 @@ export default function Push() {
                 <Typography sx={{ opacity: 0.78, mt: 0.75, maxWidth: 660 }}>
                   Compose, target, preview, send, and schedule customer notifications from one dashboard.
                 </Typography>
+                <Stack direction="row" gap={1} flexWrap="wrap" mt={1.75}>
+                  <Chip
+                    size="small"
+                    label="Open access enabled"
+                    sx={{
+                      bgcolor: "rgba(34, 197, 94, 0.18)",
+                      color: "#fff",
+                      fontWeight: 800,
+                    }}
+                  />
+                  {stats.latestCampaignAt && (
+                    <Chip
+                      size="small"
+                      label={`Last activity ${formatDateTime(stats.latestCampaignAt)}`}
+                      sx={{ bgcolor: "rgba(255,255,255,0.14)", color: "#fff", fontWeight: 800 }}
+                    />
+                  )}
+                </Stack>
               </Box>
               <Stack direction="row" gap={1} flexWrap="wrap" alignItems="flex-start">
                 <Chip label={`${stats.totalDevices || 0} devices ready`} sx={{ bgcolor: "rgba(255,255,255,0.14)", color: "#fff", fontWeight: 800 }} />
@@ -297,6 +564,34 @@ export default function Push() {
                 />
               )}
 
+              <Stack direction={{ xs: "column", sm: "row" }} gap={1.25} mt={1.5}>
+                <Button
+                  variant="outlined"
+                  startIcon={<VisibilityIcon />}
+                  onClick={handlePreviewAudience}
+                  disabled={previewLoading}
+                >
+                  {previewLoading ? "Previewing..." : "Preview audience"}
+                </Button>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Test phone numbers"
+                  placeholder="Send only to test devices"
+                  value={testPhonesText}
+                  onChange={(event) => setTestPhonesText(event.target.value)}
+                  helperText={`${testPhoneNumbers.length} valid test phone${testPhoneNumbers.length === 1 ? "" : "s"}`}
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleSendTest}
+                  disabled={testSending}
+                  sx={{ minWidth: 150, bgcolor: "#101828", "&:hover": { bgcolor: "#182230" }, fontWeight: 800 }}
+                >
+                  {testSending ? "Sending..." : "Send test"}
+                </Button>
+              </Stack>
+
               <Divider sx={{ my: 3 }} />
 
               <Stack direction="row" alignItems="center" gap={1} mb={1.5}>
@@ -310,13 +605,17 @@ export default function Push() {
               </RadioGroup>
 
               {sendOption === "schedule" && (
-                <TextField
-                  type="datetime-local"
-                  fullWidth
-                  value={scheduledAt}
-                  onChange={(event) => setScheduledAt(event.target.value)}
-                  sx={{ mt: 1.5, maxWidth: 360 }}
-                />
+                <Stack sx={{ mt: 1.5, maxWidth: 360 }} gap={1}>
+                  <TextField
+                    type="datetime-local"
+                    fullWidth
+                    value={scheduledAt}
+                    onChange={(event) => setScheduledAt(event.target.value)}
+                  />
+                  <Typography fontSize={12} color="text.secondary">
+                    All scheduled times are interpreted in your browser time zone.
+                  </Typography>
+                </Stack>
               )}
 
               <Divider sx={{ my: 3 }} />
@@ -340,9 +639,12 @@ export default function Push() {
                   onClick={handleSend}
                   sx={{ bgcolor: "#543287", "&:hover": { bgcolor: "#43256f" }, fontWeight: 900 }}
                 >
-                  {sending ? "Processing..." : sendOption === "schedule" ? "Schedule Campaign" : "Send Campaign"}
+                  {sendButtonLabel}
                 </Button>
               </Stack>
+              <Typography color="text.secondary" fontSize={12} sx={{ mt: 1.25 }}>
+                {sendHelperText}
+              </Typography>
             </Paper>
           </Grid>
 
@@ -406,14 +708,45 @@ export default function Push() {
               <Paper elevation={0} sx={{ p: { xs: 2, md: 3 }, border: "1px solid #e4e7ec", borderRadius: 4 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
                   <Typography variant="h6" fontWeight={900}>Recent campaigns</Typography>
-                  <Button size="small" onClick={loadPushMeta}>Refresh</Button>
+                  <Button size="small" onClick={loadPushMeta} disabled={loadingMeta}>
+                    {loadingMeta ? "Refreshing..." : "Refresh"}
+                  </Button>
+                </Stack>
+                <Stack direction={{ xs: "column", sm: "row" }} gap={1.25} mb={2}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    placeholder="Search title, message, route, or status"
+                    value={campaignSearch}
+                    onChange={(event) => setCampaignSearch(event.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <TextField
+                    size="small"
+                    select
+                    value={campaignFilter}
+                    onChange={(event) => setCampaignFilter(event.target.value)}
+                    sx={{ minWidth: 170 }}
+                  >
+                    <MenuItem value="all">All statuses</MenuItem>
+                    <MenuItem value="scheduled">Scheduled</MenuItem>
+                    <MenuItem value="sent">Sent</MenuItem>
+                    <MenuItem value="failed">Failed</MenuItem>
+                    <MenuItem value="sending">Sending</MenuItem>
+                  </TextField>
                 </Stack>
 
-                {!campaigns.length ? (
+                {!filteredCampaigns.length ? (
                   <Typography color="text.secondary" fontSize={14}>No push campaigns yet.</Typography>
                 ) : (
                   <Stack gap={1}>
-                    {campaigns.slice(0, 6).map((campaign) => (
+                    {filteredCampaigns.slice(0, 8).map((campaign) => (
                       <Box key={campaign._id} sx={{ p: 1.25, border: "1px solid #eef0f4", borderRadius: 2.5, bgcolor: "#fbfcff" }}>
                         <Stack direction="row" justifyContent="space-between" gap={1}>
                           <Typography fontWeight={900} fontSize={14} noWrap>{campaign.title}</Typography>
@@ -432,6 +765,52 @@ export default function Push() {
                         <Typography color="text.secondary" fontSize={12}>
                           {campaign.audienceType === "all" ? "All users" : `${campaign.phoneNumbers?.length || 0} phones`} · Delivered: {campaign.sent || 0}
                         </Typography>
+                        {campaign.failed ? (
+                          <Typography color="error.main" fontSize={12} fontWeight={700}>
+                            Failed: {campaign.failed}
+                          </Typography>
+                        ) : null}
+                        {campaign.url ? (
+                          <Chip
+                            size="small"
+                            icon={<LinkIcon />}
+                            label={campaign.url}
+                            sx={{ mt: 1, maxWidth: "100%" }}
+                          />
+                        ) : null}
+                        <Stack direction="row" gap={1} mt={1.25} flexWrap="wrap">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<VisibilityIcon />}
+                            onClick={() => loadCampaignDetail(campaign._id)}
+                            disabled={detailLoading}
+                          >
+                            Details
+                          </Button>
+                          {campaign.status === "scheduled" ? (
+                            <>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<EditIcon />}
+                                onClick={() => openEditCampaign(campaign)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                size="small"
+                                color="error"
+                                variant="outlined"
+                                startIcon={<CancelScheduleSendIcon />}
+                                onClick={() => handleCancelCampaign(campaign)}
+                                disabled={campaignActionLoading}
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : null}
+                        </Stack>
                       </Box>
                     ))}
                   </Stack>
@@ -478,6 +857,185 @@ export default function Push() {
           >
             Save
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={previewDialogOpen} onClose={() => setPreviewDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 900 }}>Audience preview</DialogTitle>
+        <DialogContent>
+          <Stack gap={1.5} mt={0.5}>
+            <Alert severity="info">
+              {audiencePreview?.audienceType === "all" ? "Campaign targets all registered users." : "Campaign targets only the selected phone numbers."}
+            </Alert>
+            <Grid container spacing={1.25}>
+              {[
+                ["Matched users", audiencePreview?.totalUsers || 0],
+                ["Users with tokens", audiencePreview?.usersWithTokens || 0],
+                ["Valid devices", audiencePreview?.validDeviceCount || 0],
+                ["Invalid tokens", audiencePreview?.invalidTokenCount || 0],
+              ].map(([label, value]) => (
+                <Grid item xs={6} key={label}>
+                  <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.5 }}>
+                    <Typography color="text.secondary" fontSize={12} fontWeight={800}>{label}</Typography>
+                    <Typography fontSize={24} fontWeight={900}>{value}</Typography>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+            <Box>
+              <Typography fontWeight={800} mb={1}>Sample recipients</Typography>
+              <Stack direction="row" gap={1} flexWrap="wrap">
+                {(audiencePreview?.samplePhones || []).length ? (
+                  audiencePreview.samplePhones.map((phone) => (
+                    <Chip key={phone} label={phone} sx={{ fontWeight: 700 }} />
+                  ))
+                ) : (
+                  <Typography color="text.secondary" fontSize={14}>No matching users found.</Typography>
+                )}
+              </Stack>
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPreviewDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={detailDialogOpen} onClose={() => setDetailDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 900 }}>Campaign details</DialogTitle>
+        <DialogContent>
+          {!selectedCampaign ? (
+            <Typography color="text.secondary">No campaign selected.</Typography>
+          ) : (
+            <Stack gap={1.5} mt={0.5}>
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}>
+                <Box>
+                  <Typography variant="h6" fontWeight={900}>{selectedCampaign.title}</Typography>
+                  <Typography color="text.secondary" sx={{ whiteSpace: "pre-wrap" }}>{selectedCampaign.message}</Typography>
+                </Box>
+                <Chip
+                  size="small"
+                  label={selectedCampaign.status}
+                  color={selectedCampaign.status === "failed" ? "error" : selectedCampaign.status === "scheduled" ? "warning" : selectedCampaign.status === "cancelled" ? "default" : "success"}
+                  sx={{ fontWeight: 800 }}
+                />
+              </Stack>
+              <Grid container spacing={1.25}>
+                {[
+                  ["Audience", selectedCampaign.audienceType === "all" ? "All users" : `${selectedCampaign.phoneNumbers?.length || 0} phones`],
+                  ["Sent", selectedCampaign.sent || 0],
+                  ["Failed", selectedCampaign.failed || 0],
+                  ["Created", formatDateTime(selectedCampaign.createdAt)],
+                  ["Scheduled", selectedCampaign.scheduledAt ? formatDateTime(selectedCampaign.scheduledAt) : "Not scheduled"],
+                  ["Delivered", selectedCampaign.sentAt ? formatDateTime(selectedCampaign.sentAt) : "Not delivered"],
+                ].map(([label, value]) => (
+                  <Grid item xs={6} key={label}>
+                    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.5, height: "100%" }}>
+                      <Typography color="text.secondary" fontSize={12} fontWeight={800}>{label}</Typography>
+                      <Typography fontSize={14} fontWeight={800}>{value}</Typography>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+              {selectedCampaign.url ? (
+                <Chip icon={<LinkIcon />} label={selectedCampaign.url} sx={{ alignSelf: "flex-start" }} />
+              ) : null}
+              {selectedCampaign.error ? (
+                <Alert severity="error">{selectedCampaign.error}</Alert>
+              ) : null}
+              {selectedCampaign.audienceSnapshot ? (
+                <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.5 }}>
+                  <Typography fontWeight={900} mb={1}>Audience snapshot</Typography>
+                  <Typography fontSize={14} color="text.secondary">
+                    {selectedCampaign.audienceSnapshot.totalUsers || 0} matched users, {selectedCampaign.audienceSnapshot.usersWithTokens || 0} users with tokens, {selectedCampaign.audienceSnapshot.validDeviceCount || 0} valid devices.
+                  </Typography>
+                </Paper>
+              ) : null}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 900 }}>Edit scheduled campaign</DialogTitle>
+        <DialogContent>
+          <Stack gap={2} mt={0.5}>
+            <TextField
+              fullWidth
+              label="Title"
+              value={editForm.title}
+              onChange={(event) => setEditForm((current) => ({ ...current, title: event.target.value.slice(0, maxTitleLen) }))}
+              helperText={`${editForm.title.length}/${maxTitleLen}`}
+            />
+            <TextField
+              fullWidth
+              multiline
+              minRows={4}
+              label="Message"
+              value={editForm.message}
+              onChange={(event) => setEditForm((current) => ({ ...current, message: event.target.value.slice(0, maxMsgLen) }))}
+              helperText={`${editForm.message.length}/${maxMsgLen}`}
+            />
+            <TextField
+              fullWidth
+              label="Deep link / URL"
+              value={editForm.url}
+              onChange={(event) => setEditForm((current) => ({ ...current, url: event.target.value }))}
+            />
+            <TextField
+              select
+              fullWidth
+              label="Audience"
+              value={editForm.audienceType}
+              onChange={(event) => setEditForm((current) => ({ ...current, audienceType: event.target.value }))}
+            >
+              <MenuItem value="phones">Specific customers</MenuItem>
+              <MenuItem value="all">All registered devices</MenuItem>
+            </TextField>
+            {editForm.audienceType === "phones" ? (
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                label="Phone numbers"
+                value={editForm.phoneNumbersText}
+                onChange={(event) => setEditForm((current) => ({ ...current, phoneNumbersText: event.target.value }))}
+              />
+            ) : null}
+            <TextField
+              type="datetime-local"
+              fullWidth
+              label="Scheduled at"
+              InputLabelProps={{ shrink: true }}
+              value={editForm.scheduledAt}
+              onChange={(event) => setEditForm((current) => ({ ...current, scheduledAt: event.target.value }))}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: "space-between", px: 3, pb: 3 }}>
+          <Button
+            color="error"
+            startIcon={<CancelScheduleSendIcon />}
+            onClick={() => selectedCampaign && handleCancelCampaign(selectedCampaign)}
+            disabled={campaignActionLoading}
+          >
+            Cancel campaign
+          </Button>
+          <Stack direction="row" gap={1}>
+            <Button onClick={() => setEditDialogOpen(false)}>Close</Button>
+            <Button
+              variant="contained"
+              startIcon={<EditIcon />}
+              onClick={handleUpdateScheduledCampaign}
+              disabled={campaignActionLoading}
+              sx={{ bgcolor: "#543287", "&:hover": { bgcolor: "#43256f" }, fontWeight: 900 }}
+            >
+              {campaignActionLoading ? "Saving..." : "Save changes"}
+            </Button>
+          </Stack>
         </DialogActions>
       </Dialog>
 

@@ -15,14 +15,17 @@ import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import AssignmentRoundedIcon from "@mui/icons-material/AssignmentRounded";
 import RestaurantMenuRoundedIcon from "@mui/icons-material/RestaurantMenuRounded";
+import VideoCameraFrontRoundedIcon from "@mui/icons-material/VideoCameraFrontRounded";
 import Push from "./Push";
 import Chats from "./Chats";
 import Bookings from "./Bookings";
 import DietDashboard from "./DietDashboard";
+import LiveClasses from "./LiveClasses";
 
 const tabs = [
   { id: "chats", label: "Chats", icon: ChatBubbleRoundedIcon },
   { id: "bookings", label: "Bookings", icon: AssignmentRoundedIcon },
+  { id: "classes", label: "Live Classes", icon: VideoCameraFrontRoundedIcon },
   { id: "diet", label: "Diet", icon: RestaurantMenuRoundedIcon },
   { id: "analytics", label: "Analytics", icon: AnalyticsRoundedIcon },
   { id: "push", label: "Push", icon: CampaignRoundedIcon },
@@ -192,6 +195,7 @@ function Dashboard() {
         )}
         {activeTab === "chats" && <Chats />}
         {activeTab === "bookings" && <Bookings />}
+        {activeTab === "classes" && <LiveClasses />}
         {activeTab === "diet" && <DietDashboard />}
         {activeTab === "push" && <Push />}
       </Box>

@@ -16,7 +16,10 @@ import {
   Typography,
 } from "@mui/material";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://muditam-app-backend-ca1c8b03db09.herokuapp.com";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  || (import.meta.env.DEV
+    ? "http://localhost:3001"
+    : "https://muditam-app-backend-ca1c8b03db09.herokuapp.com");
 
 const formatDate = (value) => {
   if (!value) return "—";

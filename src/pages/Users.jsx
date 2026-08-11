@@ -15,13 +15,18 @@ import {
   Container,
 } from '@mui/material';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  || (import.meta.env.DEV
+    ? 'http://localhost:3001'
+    : 'https://muditam-app-backend-ca1c8b03db09.herokuapp.com');
+
 export default function Users() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    axios.get('https://muditam-app-backend-ca1c8b03db09.herokuapp.com/api/user')
+    axios.get(`${API_BASE_URL}/api/user`)
       .then(res => {
         setUsers(res.data);
         setLoading(false);
