@@ -243,7 +243,9 @@ export default function LiveClasses() {
               </Stack>
               <Stack direction="row" gap={1} flexWrap="wrap" sx={{ mt: 2 }}>
                 {item.hostStartUrl ? <Button size="small" startIcon={<LaunchRoundedIcon />} variant="contained" onClick={() => window.open(item.hostStartUrl, "_blank", "noopener,noreferrer")}>Start as host</Button> : null}
-                {item.status === "scheduled" ? <Button size="small" startIcon={<PlayCircleRoundedIcon />} color="success" variant="outlined" onClick={() => updateStatus(item.id, "live")}>Mark live</Button> : null}
+                {item.status === "scheduled" ? (
+                  <Button size="small" startIcon={<PlayCircleRoundedIcon />} color="success" variant="outlined" onClick={() => updateStatus(item.id, "live")}>{item.meetingId ? "Mark live" : "Start & create Zoom"}</Button>
+                ) : null}
                 {item.status === "live" ? <Button size="small" startIcon={<StopCircleRoundedIcon />} variant="outlined" onClick={() => updateStatus(item.id, "completed")}>Complete</Button> : null}
                 {!['completed', 'cancelled'].includes(item.status) ? <Button size="small" color="error" onClick={() => cancelClass(item.id)}>Cancel</Button> : null}
               </Stack>

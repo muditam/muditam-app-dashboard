@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert, Box, Button, Chip, CircularProgress, MenuItem, Paper, Stack, TextField, Typography,
+  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, MenuItem, Paper, Stack, TextField, Typography,
 } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
@@ -8,6 +8,7 @@ import LaunchRoundedIcon from "@mui/icons-material/LaunchRounded";
 import PlayCircleRoundedIcon from "@mui/icons-material/PlayCircleRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import VideoCallRoundedIcon from "@mui/icons-material/VideoCallRounded";
+import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   || (import.meta.env.DEV ? "http://localhost:3001" : "https://muditam-app-backend-ca1c8b03db09.herokuapp.com");
@@ -32,6 +33,11 @@ export default function ZoomMeetings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [recordingFile, setRecordingFile] = useState(null);
+  const [uploadForm, setUploadForm] = useState({ title: "Customer consultation recording", classSessionId: "", durationMinutes: 30, recordedAt: new Date().toISOString().slice(0, 16) });
   const [form, setForm] = useState({ topic: "Muditam customer consultation", startsAt: defaultStart(), durationMinutes: 30 });
 
   const request = useCallback(async (path, options = {}) => {
@@ -114,6 +120,57 @@ export default function ZoomMeetings() {
     } catch (playError) { setError(playError.message); }
   };
 
+  const uploadToWasabi = (url, file, headers) => new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    Object.entries(headers || {}).forEach(([name, value]) => xhr.setRequestHeader(name, value));
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) setUploadProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Wasabi upload failed (${xhr.status})`)));
+    xhr.onerror = () => reject(new Error("Wasabi upload failed. Check the bucket CORS configuration and try again."));
+    xhr.send(file);
+  });
+
+  const uploadRecording = async () => {
+    if (!customerId) { setError("Select a customer before uploading a recording."); return; }
+    if (!recordingFile) { setError("Select an MP4, WebM, or MOV recording."); return; }
+    setUploading(true); setUploadProgress(0); setError(""); setNotice("");
+    let pendingRecordingId = "";
+    try {
+      const init = await request("/api/program/admin/recordings/manual-upload", {
+        method: "POST",
+        body: JSON.stringify({
+          customerId,
+          classSessionId: uploadForm.classSessionId || undefined,
+          title: uploadForm.title,
+          instructorName: "Muditam expert",
+          durationMinutes: Number(uploadForm.durationMinutes || 0),
+          recordedAt: new Date(uploadForm.recordedAt).toISOString(),
+          mimeType: recordingFile.type || (recordingFile.name.toLowerCase().endsWith(".webm") ? "video/webm" : recordingFile.name.toLowerCase().endsWith(".mov") ? "video/quicktime" : "video/mp4"),
+          sizeBytes: recordingFile.size,
+        }),
+      });
+      pendingRecordingId = init.recording.id;
+      await uploadToWasabi(init.uploadUrl, recordingFile, init.requiredHeaders);
+      await request(`/api/program/admin/recordings/${init.recording.id}/manual-upload/complete`, {
+        method: "POST",
+        body: JSON.stringify({ published: true }),
+      });
+      setUploadProgress(100);
+      setUploadOpen(false);
+      setRecordingFile(null);
+      setUploadForm({ title: "Customer consultation recording", classSessionId: "", durationMinutes: 30, recordedAt: new Date().toISOString().slice(0, 16) });
+      setNotice("Recording uploaded privately to Wasabi and published to the customer.");
+      await load();
+    } catch (uploadError) {
+      if (pendingRecordingId) request(`/api/program/admin/recordings/${pendingRecordingId}`, { method: "DELETE" }).catch(() => {});
+      setError(uploadError.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <Box sx={{ maxWidth: 1320, mx: "auto" }}>
       <Paper elevation={0} sx={{ p: { xs: 2.25, md: 3 }, borderRadius: 3, color: "#fff", background: "linear-gradient(135deg,#102a43,#543287 65%,#805ad5)", mb: 2.5 }}>
@@ -156,12 +213,40 @@ export default function ZoomMeetings() {
           {!meetings.length ? <Paper variant="outlined" sx={{ p: 4, borderRadius: 2.5, textAlign: "center" }}><Typography fontWeight={900}>No customer meetings found</Typography><Typography color="text.secondary">Select a customer and schedule their first Zoom session.</Typography></Paper> : null}
         </Stack>
 
-        <Typography variant="h5" fontWeight={950} sx={{ mt: 3, mb: 1.5 }}>Customer recordings</Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} gap={1} sx={{ mt: 3, mb: 1.5 }}>
+          <Box><Typography variant="h5" fontWeight={950}>Customer recordings</Typography><Typography color="text.secondary" fontSize={13}>Upload Zoom computer recordings privately to Wasabi.</Typography></Box>
+          <Button disabled={!customerId || !config?.recordingStorageConfigured} variant="contained" startIcon={<UploadFileRoundedIcon />} onClick={() => setUploadOpen(true)}>Upload recording</Button>
+        </Stack>
         <Stack gap={1.25}>
           {recordings.map((recording) => <Paper key={recording.id} variant="outlined" sx={{ p: 2, borderRadius: 2.5, borderColor: "#e7e0f3" }}><Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" gap={2}><Box><Typography fontWeight={900}>{recording.customerName} · {recording.title}</Typography><Typography fontSize={13} color="text.secondary">{recording.customerPhone} · {formatDateTime(recording.recordedAt)} · {recording.durationMinutes || 0} min</Typography><Chip size="small" label={recording.status} color={recording.status === "ready" ? "success" : recording.status === "failed" ? "error" : "info"} sx={{ mt: .75 }} /></Box>{recording.status === "ready" ? <Button variant="contained" startIcon={<PlayCircleRoundedIcon />} onClick={() => playRecording(recording.id)}>View recording</Button> : null}</Stack></Paper>)}
-          {!recordings.length ? <Paper variant="outlined" sx={{ p: 4, borderRadius: 2.5, textAlign: "center" }}><Typography fontWeight={900}>No customer recordings yet</Typography><Typography color="text.secondary">Completed cloud recordings will be linked to the matching customer automatically.</Typography></Paper> : null}
+          {!recordings.length ? <Paper variant="outlined" sx={{ p: 4, borderRadius: 2.5, textAlign: "center" }}><Typography fontWeight={900}>No customer recordings yet</Typography><Typography color="text.secondary">Select a customer and upload their Zoom computer recording.</Typography></Paper> : null}
         </Stack>
       </>}
+      <Dialog open={uploadOpen} onClose={() => !uploading && setUploadOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle fontWeight={900}>Upload customer recording</DialogTitle>
+        <DialogContent sx={{ pt: "12px !important" }}>
+          <Stack gap={2}>
+            <Alert severity="info">The video uploads directly to private Wasabi storage. Maximum size: 2 GB.</Alert>
+            <TextField label="Customer" value={selectedCustomer ? `${selectedCustomer.name} · ${selectedCustomer.phone}` : "Select a customer"} disabled />
+            <TextField select label="Related meeting (optional)" value={uploadForm.classSessionId} onChange={(event) => setUploadForm({ ...uploadForm, classSessionId: event.target.value })}>
+              <MenuItem value="">No related meeting</MenuItem>
+              {meetings.map((meeting) => <MenuItem key={meeting.id} value={meeting.id}>{meeting.title} · {formatDateTime(meeting.startsAt)}</MenuItem>)}
+            </TextField>
+            <TextField label="Recording title" value={uploadForm.title} onChange={(event) => setUploadForm({ ...uploadForm, title: event.target.value })} />
+            <Stack direction={{ xs: "column", sm: "row" }} gap={2}>
+              <TextField fullWidth type="datetime-local" label="Recorded at" InputLabelProps={{ shrink: true }} value={uploadForm.recordedAt} onChange={(event) => setUploadForm({ ...uploadForm, recordedAt: event.target.value })} />
+              <TextField fullWidth type="number" label="Duration (minutes)" value={uploadForm.durationMinutes} onChange={(event) => setUploadForm({ ...uploadForm, durationMinutes: event.target.value })} />
+            </Stack>
+            <Button component="label" variant="outlined" startIcon={<UploadFileRoundedIcon />} disabled={uploading}>
+              {recordingFile ? recordingFile.name : "Choose MP4, WebM, or MOV"}
+              <input hidden type="file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" onChange={(event) => setRecordingFile(event.target.files?.[0] || null)} />
+            </Button>
+            {recordingFile ? <Typography color="text.secondary" fontSize={13}>{(recordingFile.size / 1024 / 1024).toFixed(1)} MB</Typography> : null}
+            {uploading ? <Box><LinearProgress variant="determinate" value={uploadProgress} /><Typography fontSize={12} sx={{ mt: .5 }}>{uploadProgress}% uploaded</Typography></Box> : null}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}><Button disabled={uploading} onClick={() => setUploadOpen(false)}>Cancel</Button><Button disabled={uploading || !recordingFile || !uploadForm.title.trim()} variant="contained" onClick={uploadRecording}>{uploading ? "Uploading…" : "Upload & publish"}</Button></DialogActions>
+      </Dialog>
     </Box>
   );
 }
