@@ -2,25 +2,20 @@ import React, { useEffect, useState } from "react";
 import {
   Box,
   ButtonBase,
-  Chip,
   Container,
   Paper,
   Stack,
   Typography,
 } from "@mui/material";
-import AnalyticsRoundedIcon from "@mui/icons-material/AnalyticsRounded";
-import AutoGraphRoundedIcon from "@mui/icons-material/AutoGraphRounded";
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import AssignmentRoundedIcon from "@mui/icons-material/AssignmentRounded";
-import RestaurantMenuRoundedIcon from "@mui/icons-material/RestaurantMenuRounded";
 import VideoCameraFrontRoundedIcon from "@mui/icons-material/VideoCameraFrontRounded";
 import VideoCallRoundedIcon from "@mui/icons-material/VideoCallRounded";
 import Push from "./Push";
 import Chats from "./Chats";
 import Bookings from "./Bookings";
-import DietDashboard from "./DietDashboard";
 import LiveClasses from "./LiveClasses";
 import ZoomMeetings from "./ZoomMeetings";
 
@@ -29,13 +24,16 @@ const tabs = [
   { id: "bookings", label: "Bookings", icon: AssignmentRoundedIcon },
   { id: "classes", label: "Live Classes", icon: VideoCameraFrontRoundedIcon },
   { id: "zoomMeetings", label: "Zoom Meetings", icon: VideoCallRoundedIcon },
-  { id: "diet", label: "Diet", icon: RestaurantMenuRoundedIcon },
-  { id: "analytics", label: "Analytics", icon: AnalyticsRoundedIcon },
   { id: "push", label: "Push", icon: CampaignRoundedIcon },
 ];
 
+const availableTabIds = new Set(tabs.map((tab) => tab.id));
+
 function Dashboard() {
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem("dashboardActiveTabV2") || "chats");
+  const [activeTab, setActiveTab] = useState(() => {
+    const storedTab = localStorage.getItem("dashboardActiveTabV2");
+    return availableTabIds.has(storedTab) ? storedTab : "chats";
+  });
 
   useEffect(() => {
     localStorage.setItem("dashboardActiveTabV2", activeTab);
@@ -142,65 +140,10 @@ function Dashboard() {
       </Box>
 
       <Box component="main" sx={{ px: { xs: 1.5, md: 3 }, py: { xs: 2, md: 2.5 } }}>
-        {activeTab === "analytics" && (
-          <Box sx={{ maxWidth: 1320, mx: "auto" }}>
-            <Stack direction={{ xs: "column", md: "row" }} gap={2} mb={2}>
-              {[
-                ["Revenue pulse", "Live", "#0f766e"],
-                ["Chat velocity", "Realtime", "#543287"],
-                ["Campaign health", "Active", "#b45309"],
-              ].map(([label, value, color]) => (
-                <Paper
-                  key={label}
-                  elevation={0}
-                  sx={{
-                    flex: 1,
-                    p: 2.25,
-                    borderRadius: 3,
-                    border: "1px solid rgba(16, 24, 40, 0.08)",
-                    boxShadow: "0 18px 48px rgba(16, 24, 40, 0.08)",
-                  }}
-                >
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography fontSize={13} color="text.secondary" fontWeight={850}>
-                      {label}
-                    </Typography>
-                    <AutoGraphRoundedIcon sx={{ color, fontSize: 22 }} />
-                  </Stack>
-                  <Typography fontSize={30} fontWeight={950} color={color} sx={{ mt: 1 }}>
-                    {value}
-                  </Typography>
-                  <Chip
-                    size="small"
-                    label="Connected dashboard"
-                    sx={{ mt: 1, borderRadius: 999, bgcolor: "#f2f4f7", fontWeight: 800 }}
-                  />
-                </Paper>
-              ))}
-            </Stack>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 3,
-                borderRadius: 3,
-                border: "1px solid rgba(16, 24, 40, 0.08)",
-                bgcolor: "#fff",
-              }}
-            >
-              <Typography variant="h5" fontWeight={950}>
-                Analytics
-              </Typography>
-              <Typography color="text.secondary" sx={{ mt: 0.75 }}>
-                Add your key business charts here. The live chat workspace is now the default dashboard view.
-              </Typography>
-            </Paper>
-          </Box>
-        )}
         {activeTab === "chats" && <Chats />}
         {activeTab === "bookings" && <Bookings />}
         {activeTab === "classes" && <LiveClasses />}
         {activeTab === "zoomMeetings" && <ZoomMeetings />}
-        {activeTab === "diet" && <DietDashboard />}
         {activeTab === "push" && <Push />}
       </Box>
     </Box>
