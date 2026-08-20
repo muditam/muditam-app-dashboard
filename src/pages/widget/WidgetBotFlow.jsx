@@ -109,7 +109,8 @@ function ProductDetailEditor({ editing, setEditing }) {
     <EditableProductField label="Warning / disclaimer" field="warning" editing={editing} setEditing={setEditing} />
     <EditableProductField label="Other" field="other" editing={editing} setEditing={setEditing} />
     <EditableProductField label="Variant formats" field="variantFormats" editing={editing} setEditing={setEditing} />
-    <TextField label="Chatbot tags" value={editing.tagsText || ""} onChange={(event) => setEditing({ ...editing, tagsText: event.target.value })} helperText="Comma-separated concerns such as diabetes, liver, heart, or sleep. Tags decide which searches include this product." />
+    {editing.legacyCategory && <Alert severity="info">Legacy system category: <strong>{editing.legacyCategory}</strong>. This is shown for reference only and no longer controls chatbot recommendations.</Alert>}
+    <TextField label="Chatbot tags" value={editing.tagsText || ""} onChange={(event) => setEditing({ ...editing, tagsText: event.target.value })} helperText="Only these admin-managed tags control concern-based recommendations." />
     <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
       <TextField select fullWidth label="Recommendation visibility" value={editing.visible === false ? "hidden" : "visible"} onChange={(event) => setEditing({ ...editing, visible: event.target.value === "visible" })}><MenuItem value="visible">Visible to customers</MenuItem><MenuItem value="hidden">Hidden from recommendations</MenuItem></TextField>
       <TextField fullWidth type="number" label="Overall product order" value={editing.overallRank ?? ""} onChange={(event) => setEditing({ ...editing, overallRank: event.target.value ? Number(event.target.value) : null })} inputProps={{ min: 1, max: 999 }} helperText="Used when customers ask to see all products. 1 appears first." />
