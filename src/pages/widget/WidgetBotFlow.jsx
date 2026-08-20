@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert, Avatar, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
+  Accordion, AccordionDetails, AccordionSummary, Alert, Avatar, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, Divider, IconButton, InputAdornment, MenuItem, Paper, Select, Stack, Switch,
   Tab, Tabs, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
@@ -14,6 +14,10 @@ import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import { commerceWidgetApi } from "../../lib/commerceWidgetApi";
 import { theme } from "./theme";
 
@@ -75,20 +79,79 @@ function BotTest() {
   </Stack>;
 }
 
+const splitList = (value) => [...new Set(String(value).split(",").map((item) => item.trim()).filter(Boolean))];
+
+function EditableProductField({ label, field, editing, setEditing, rows = 3, placeholder }) {
+  return <Accordion variant="outlined" disableGutters sx={{ borderRadius: "12px !important", "&:before": { display: "none" } }}>
+    <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography fontWeight={700}>{label}</Typography></AccordionSummary>
+    <AccordionDetails><TextField fullWidth multiline minRows={rows} value={editing.fields?.[field] || ""} onChange={(event) => setEditing({ ...editing, fields: { ...(editing.fields || {}), [field]: event.target.value } })} placeholder={placeholder || `Add approved ${label.toLowerCase()} information`} /></AccordionDetails>
+  </Accordion>;
+}
+
+function ReadOnlyProductField({ label, children }) {
+  return <Accordion variant="outlined" disableGutters sx={{ borderRadius: "12px !important", "&:before": { display: "none" } }}>
+    <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}><Typography fontWeight={700}>{label}</Typography></AccordionSummary>
+    <AccordionDetails><Typography sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{children || "Not available from Shopify"}</Typography></AccordionDetails>
+  </Accordion>;
+}
+
+function ProductDetailEditor({ editing, setEditing }) {
+  const firstVariant = editing.variants?.[0];
+  return <Stack spacing={2.2} sx={{ mt: 1 }}>
+    <Stack direction="row" spacing={2} alignItems="center"><Avatar src={editing.imageUrl || undefined} variant="rounded" sx={{ width: 72, height: 72 }}>{editing.name?.[0]}</Avatar><Box><Typography variant="h6" fontWeight={750}>{editing.name}</Typography><Typography color="text.secondary">Product data used by the chatbot</Typography></Box></Stack>
+    <Alert severity="info">Editable fields override chatbot knowledge only. Shopify continues to control storefront data, prices, stock, images and variants.</Alert>
+    <Typography fontWeight={750}>Editable chatbot fields</Typography>
+    <TextField label="Approved description" multiline minRows={4} value={editing.approvedDescription || ""} onChange={(event) => setEditing({ ...editing, approvedDescription: event.target.value })} placeholder={editing.shopify?.description || "Add an approved chatbot description"} />
+    <EditableProductField label="Concern" field="concern" editing={editing} setEditing={setEditing} />
+    <EditableProductField label="Key benefits" field="keyBenefits" editing={editing} setEditing={setEditing} />
+    <EditableProductField label="Quantity" field="quantity" editing={editing} setEditing={setEditing} />
+    <EditableProductField label="Usage" field="usage" editing={editing} setEditing={setEditing} placeholder={editing.shopify?.dosage || "Add approved usage information"} />
+    <EditableProductField label="Warning / disclaimer" field="warning" editing={editing} setEditing={setEditing} />
+    <EditableProductField label="Other" field="other" editing={editing} setEditing={setEditing} />
+    <EditableProductField label="Variant formats" field="variantFormats" editing={editing} setEditing={setEditing} />
+    <TextField label="Chatbot tags" value={editing.tagsText || ""} onChange={(event) => setEditing({ ...editing, tagsText: event.target.value })} helperText="Comma-separated tags used for search and bulk actions." />
+    <TextField label="Aliases and common misspellings" value={editing.aliasesText || ""} onChange={(event) => setEditing({ ...editing, aliasesText: event.target.value })} />
+    <TextField select label="Recommendation priority" value={editing.recommendationPriority || "normal"} onChange={(event) => setEditing({ ...editing, recommendationPriority: event.target.value })}><MenuItem value="hidden">Hidden from recommendations</MenuItem><MenuItem value="normal">Normal</MenuItem><MenuItem value="boosted">Boosted</MenuItem></TextField>
+    <Divider />
+    <Typography fontWeight={750}>Shopify fields — read only</Typography>
+    <ReadOnlyProductField label="Shopify ID">{editing.shopify?.productId}</ReadOnlyProductField>
+    <ReadOnlyProductField label="URL">{editing.productUrl}</ReadOnlyProductField>
+    <ReadOnlyProductField label="Image URL">{editing.imageUrl}</ReadOnlyProductField>
+    <ReadOnlyProductField label="Collections">{editing.shopify?.collections?.join(", ")}</ReadOnlyProductField>
+    <ReadOnlyProductField label="Published description">{editing.shopify?.description}</ReadOnlyProductField>
+    <ReadOnlyProductField label="Published dosage">{editing.shopify?.dosage}</ReadOnlyProductField>
+    <ReadOnlyProductField label="Price">{editing.variants?.length ? editing.variants.map((variant) => `${variant.title}: ₹${variant.price}${variant.compareAtPrice ? ` (MRP ₹${variant.compareAtPrice})` : ""}${variant.available ? "" : " — unavailable"}`).join("\n") : ""}</ReadOnlyProductField>
+    <ReadOnlyProductField label="Variant ID">{firstVariant?.shopifyVariantId}</ReadOnlyProductField>
+    <ReadOnlyProductField label="Add to cart URL">{firstVariant?.shopifyVariantId ? `${editing.productUrl}?variant=${firstVariant.shopifyVariantId}` : ""}</ReadOnlyProductField>
+    <ReadOnlyProductField label="Variants">{editing.variants?.length ? JSON.stringify(editing.variants, null, 2) : ""}</ReadOnlyProductField>
+  </Stack>;
+}
+
 function DataSource() {
   const [kind, setKind] = useState("products"); const [data, setData] = useState([]); const [search, setSearch] = useState(""); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
-  const load = async () => { setLoading(true); setError(""); try { const result = kind === "products" ? await commerceWidgetApi.getBotProducts() : await commerceWidgetApi.getBotKnowledge(); setData(kind === "products" ? result.products : result.sources); } catch (e) { setError(e.message); } finally { setLoading(false); } };
+  const [notice, setNotice] = useState(""); const [editing, setEditing] = useState(null); const [saving, setSaving] = useState(false);
+  const [bulkTags, setBulkTags] = useState(""); const [bulkPriority, setBulkPriority] = useState("hidden");
+  const load = async () => { if (kind === "bulk") { setLoading(false); return; } setLoading(true); setError(""); try { const result = kind === "products" ? await commerceWidgetApi.getBotProducts() : await commerceWidgetApi.getBotKnowledge(); setData(kind === "products" ? result.products : result.sources); } catch (e) { setError(e.message); } finally { setLoading(false); } };
+  // Reload when the selected data-source section changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [kind]);
   const filtered = useMemo(() => data.filter((item) => `${item.name ?? item.title} ${item.slug ?? item.content}`.toLowerCase().includes(search.toLowerCase())), [data, search]);
+  const saveProduct = async (product, patch = {}) => { setSaving(true); setError(""); try { const payload = { recommendationPriority: product.recommendationPriority || "normal", tags: product.tagsText == null ? (product.tags || []) : splitList(product.tagsText), aliases: product.aliasesText == null ? (product.aliases || []) : splitList(product.aliasesText), approvedDescription: product.approvedDescription || "", fields: { concern: "", keyBenefits: "", quantity: "", usage: "", warning: "", other: "", variantFormats: "", ...(product.fields || {}) }, ...patch }; const result = await commerceWidgetApi.saveBotProduct(product.slug, payload); setData((items) => items.map((item) => item.slug === product.slug ? result.product : item)); setEditing(null); setNotice(`${product.name} settings saved.`); } catch (e) { setError(e.message); } finally { setSaving(false); } };
+  const saveKnowledge = async () => { setSaving(true); setError(""); try { const result = await commerceWidgetApi.updateBotKnowledge(editing.key, { title: editing.title, content: editing.content }); setData((items) => items.map((item) => item.key === editing.key ? result.source : item)); setEditing(null); setNotice("Knowledge updated and re-indexed."); } catch (e) { setError(e.message); } finally { setSaving(false); } };
+  const deleteKnowledge = async (item) => { if (!window.confirm(`Remove “${item.title}” from the bot knowledge base?`)) return; try { await commerceWidgetApi.deleteBotKnowledge(item.key); setData((items) => items.filter((entry) => entry.key !== item.key)); setNotice("Knowledge removed from chatbot answers."); } catch (e) { setError(e.message); } };
+  const applyBulk = async () => { setSaving(true); setError(""); try { const result = await commerceWidgetApi.bulkSaveBotProducts({ tags: splitList(bulkTags), recommendationPriority: bulkPriority }); setNotice(`${result.matched} products updated.`); setBulkTags(""); await load(); } catch (e) { setError(e.message); } finally { setSaving(false); } };
   return <Box><Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={2}><Box><Typography variant="h5" fontWeight={750}>Data source</Typography><Typography color="text.secondary" sx={{ mt: .5 }}>Verified information currently available to the chatbot.</Typography></Box><Button startIcon={<RefreshRoundedIcon />} variant="outlined" onClick={load} sx={{ textTransform: "none", borderRadius: 2.5, alignSelf: "flex-start" }}>Refresh</Button></Stack>
-    <Tabs value={kind} onChange={(_, value) => setKind(value)} sx={{ mt: 3 }}><Tab value="products" label="Products" /><Tab value="knowledge" label="Non-product data" /></Tabs>
+    <Tabs value={kind} onChange={(_, value) => setKind(value)} sx={{ mt: 3 }}><Tab value="products" label="Products" /><Tab value="knowledge" label="Non-product data" /><Tab value="bulk" label="Bulk actions" /></Tabs>
+    {notice && <Alert severity="success" onClose={() => setNotice("")} sx={{ mt: 2 }}>{notice}</Alert>}
+    {kind === "bulk" ? <Paper sx={{ ...cardSx, p: { xs: 2.5, md: 4 }, mt: 3, maxWidth: 820 }}><Stack spacing={2.5}><Box><Typography variant="h6" fontWeight={750}>Hide or boost products by tag</Typography><Typography color="text.secondary" fontSize={14} sx={{ mt: .5 }}>This changes chatbot recommendation behaviour only. It does not modify your Shopify catalogue.</Typography></Box><TextField label="Product tags" value={bulkTags} onChange={(e) => setBulkTags(e.target.value)} placeholder="bestseller, diabetes, clearance" helperText="Separate multiple tags with commas." /><TextField select label="Recommendation behaviour" value={bulkPriority} onChange={(e) => setBulkPriority(e.target.value)}><MenuItem value="hidden">Hidden</MenuItem><MenuItem value="normal">Normal</MenuItem><MenuItem value="boosted">Boosted</MenuItem></TextField><Button variant="contained" disabled={saving || !splitList(bulkTags).length} onClick={applyBulk} sx={{ ...primaryButtonSx, alignSelf: "flex-start" }}>{saving ? "Applying..." : "Apply to matching products"}</Button></Stack></Paper> : <>
     <TextField fullWidth placeholder="Search data sources" value={search} onChange={(e) => setSearch(e.target.value)} sx={{ my: 2.5 }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon /></InputAdornment> }} />
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-    <TableContainer component={Paper} sx={cardSx}><Table><TableHead><TableRow>{kind === "products" ? <><TableCell>Product</TableCell><TableCell>Category</TableCell><TableCell>Knowledge</TableCell><TableCell>Recommendation</TableCell></> : <><TableCell>Source</TableCell><TableCell>Content</TableCell><TableCell>Managed by</TableCell></>}</TableRow></TableHead><TableBody>
-      {filtered.map((item) => kind === "products" ? <TableRow key={item.slug}><TableCell><Stack direction="row" spacing={1.5} alignItems="center"><Avatar src={item.imageUrl || undefined} variant="rounded">{item.name?.[0]}</Avatar><Box><Stack direction="row" alignItems="center" spacing={.5}><Typography fontWeight={700}>{item.name}</Typography><IconButton size="small" component="a" href={item.productUrl} target="_blank"><OpenInNewRoundedIcon sx={{ fontSize: 15 }} /></IconButton></Stack><Typography fontSize={12} color="text.secondary">{item.slug}</Typography></Box></Stack></TableCell><TableCell>{item.category}</TableCell><TableCell>{item.knowledgeChunkCount} chunks</TableCell><TableCell><Chip size="small" color={item.recommendationEligible ? "success" : "default"} label={item.recommendationEligible ? "Eligible" : "Not recommended"} /></TableCell></TableRow> :
-      <TableRow key={item.key}><TableCell><Typography fontWeight={700}>{item.title}</Typography><Typography fontSize={12} color="text.secondary">{item.sourceName}</Typography></TableCell><TableCell><Typography fontSize={13.5} sx={{ maxWidth: 680 }} noWrap>{item.content}</Typography></TableCell><TableCell><Chip size="small" label={item.managedBy === "bot_flow" ? "Dashboard" : "Platform"} /></TableCell></TableRow>)}
+    <TableContainer component={Paper} sx={cardSx}><Table><TableHead><TableRow>{kind === "products" ? <><TableCell>Product</TableCell><TableCell>Category</TableCell><TableCell>Knowledge</TableCell><TableCell>Recommendation priority</TableCell><TableCell>Tags</TableCell><TableCell align="right">Action</TableCell></> : <><TableCell>Source</TableCell><TableCell>Content</TableCell><TableCell>Managed by</TableCell><TableCell align="right">Action</TableCell></>}</TableRow></TableHead><TableBody>
+      {filtered.map((item) => kind === "products" ? <TableRow key={item.slug}><TableCell><Stack direction="row" spacing={1.5} alignItems="center"><Avatar src={item.imageUrl || undefined} variant="rounded">{item.name?.[0]}</Avatar><Box><Stack direction="row" alignItems="center" spacing={.5}><Typography fontWeight={700}>{item.name}</Typography><IconButton size="small" component="a" href={item.productUrl} target="_blank"><OpenInNewRoundedIcon sx={{ fontSize: 15 }} /></IconButton></Stack><Typography fontSize={12} color="text.secondary">{item.slug}</Typography></Box></Stack></TableCell><TableCell>{item.category}</TableCell><TableCell>{item.knowledgeChunkCount} chunks</TableCell><TableCell><Select size="small" value={item.recommendationPriority || "normal"} disabled={saving} onChange={(e) => saveProduct(item, { recommendationPriority: e.target.value })} sx={{ minWidth: 130 }}><MenuItem value="hidden"><Stack direction="row" gap={1}><VisibilityOffOutlinedIcon fontSize="small" />Hidden</Stack></MenuItem><MenuItem value="normal">Normal</MenuItem><MenuItem value="boosted"><Stack direction="row" gap={1}><TrendingUpRoundedIcon fontSize="small" />Boosted</Stack></MenuItem></Select></TableCell><TableCell><Typography fontSize={13} sx={{ maxWidth: 220 }} noWrap>{item.tags?.join(", ") || "—"}</Typography></TableCell><TableCell align="right"><IconButton onClick={() => setEditing({ type: "product", ...item, tagsText: (item.tags || []).join(", "), aliasesText: (item.aliases || []).join(", ") })}><EditOutlinedIcon /></IconButton></TableCell></TableRow> :
+      <TableRow key={item.key}><TableCell><Typography fontWeight={700}>{item.title}</Typography><Typography fontSize={12} color="text.secondary">{item.sourceName}</Typography></TableCell><TableCell><Typography fontSize={13.5} sx={{ maxWidth: 680 }} noWrap>{item.content}</Typography></TableCell><TableCell><Chip size="small" label={item.managedBy === "bot_flow" ? "Dashboard" : "Platform"} /></TableCell><TableCell align="right">{item.managedBy === "bot_flow" && <><IconButton onClick={() => setEditing({ type: "knowledge", ...item })}><EditOutlinedIcon /></IconButton><IconButton color="error" onClick={() => deleteKnowledge(item)}><DeleteOutlineRoundedIcon /></IconButton></>}</TableCell></TableRow>)}
       {!loading && !filtered.length && <TableRow><TableCell colSpan={4}><Empty>No data sources found.</Empty></TableCell></TableRow>}
-    </TableBody></Table>{loading && <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /></Box>}</TableContainer>
+    </TableBody></Table>{loading && <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /></Box>}</TableContainer></>}
+    <Dialog open={Boolean(editing)} onClose={() => !saving && setEditing(null)} fullWidth maxWidth="md"><DialogTitle>{editing?.type === "product" ? "View product details" : "Edit knowledge"}</DialogTitle><DialogContent>{editing?.type === "product" ? <ProductDetailEditor editing={editing} setEditing={setEditing} /> : editing && <Stack spacing={2.2} sx={{ mt: 1 }}><TextField label="Title" required value={editing.title || ""} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /><TextField label="Content" required multiline minRows={10} value={editing.content || ""} onChange={(e) => setEditing({ ...editing, content: e.target.value })} helperText="Saving will re-index this content for future chatbot answers." /></Stack>}</DialogContent><DialogActions><Button onClick={() => setEditing(null)} disabled={saving}>Close</Button><Button variant="contained" disabled={saving || (editing?.type === "knowledge" && (!editing.title?.trim() || editing.content?.trim().length < 10))} onClick={() => editing?.type === "product" ? saveProduct(editing) : saveKnowledge()} sx={primaryButtonSx}>{saving ? "Saving..." : "Save changes"}</Button></DialogActions></Dialog>
   </Box>;
 }
 

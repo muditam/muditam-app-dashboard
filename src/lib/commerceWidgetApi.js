@@ -87,6 +87,20 @@ export const commerceWidgetApi = {
   getBotProducts() {
     return request(`/api/commerce-widget/bot-flow/products`);
   },
+  saveBotProduct(slug, payload) {
+    return request(`/api/commerce-widget/bot-flow/products/${encodeURIComponent(slug)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  },
+  bulkSaveBotProducts(payload) {
+    return request(`/api/commerce-widget/bot-flow/products/bulk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  },
   getBotKnowledge() {
     return request(`/api/commerce-widget/bot-flow/knowledge`);
   },
@@ -96,6 +110,16 @@ export const commerceWidgetApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+  },
+  updateBotKnowledge(key, payload) {
+    return request(`/api/commerce-widget/bot-flow/knowledge/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  },
+  deleteBotKnowledge(key) {
+    return request(`/api/commerce-widget/bot-flow/knowledge/${encodeURIComponent(key)}`, { method: 'DELETE' });
   },
   getMissingInfo() {
     return request(`/api/commerce-widget/bot-flow/missing-info`);
