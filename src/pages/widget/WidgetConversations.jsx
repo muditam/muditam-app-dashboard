@@ -536,7 +536,7 @@ function WidgetConversations() {
   }, [selectedId]);
 
   return (
-    <Box sx={{ maxWidth: 1320 }}>
+    <Box>
       {error && (
         <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>
           Couldn't load conversations: {error}
@@ -552,6 +552,7 @@ function WidgetConversations() {
             borderRadius: `${theme.radius}px`,
             border: `1px solid ${theme.border}`,
             bgcolor: theme.surface,
+            boxShadow: theme.shadowSoft,
             p: 1.75,
             display: "flex",
             flexDirection: "column",
@@ -622,6 +623,7 @@ function WidgetConversations() {
             borderRadius: `${theme.radius}px`,
             border: `1px solid ${theme.border}`,
             bgcolor: theme.surface,
+            boxShadow: theme.shadowSoft,
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
@@ -639,6 +641,7 @@ function WidgetConversations() {
             borderRadius: `${theme.radius}px`,
             border: `1px solid ${theme.border}`,
             bgcolor: theme.surface,
+            boxShadow: theme.shadowSoft,
             p: 2.5,
           }}
         >

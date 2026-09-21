@@ -231,9 +231,9 @@ function WidgetBotUI() {
         })}
       </Stack>
 
-      <Stack direction={{ xs: "column", lg: "row" }} alignItems="flex-start" gap={4}>
+      <Stack direction={{ xs: "column", lg: "row" }} alignItems="flex-start" gap={3}>
       <Box sx={{ flex: 1, minWidth: 0, width: "100%" }}>
-      <Box sx={{ p: 3, borderRadius: `${theme.radius}px`, border: `1px solid ${theme.border}`, bgcolor: theme.surface }}>
+      <Box sx={{ p: { xs: 2.25, md: 2.75 }, borderRadius: `${theme.radius}px`, border: `1px solid ${theme.border}`, bgcolor: theme.surface, boxShadow: theme.shadowSoft }}>
         {activeTab === "theme" && (
           <Stack gap={3.5}>
             <Box>
