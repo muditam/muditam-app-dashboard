@@ -17,6 +17,7 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import { commerceWidgetApi } from "../../lib/commerceWidgetApi";
+import { loadProductDisplayData, renderStars } from "../../lib/productDisplayData";
 import { theme } from "./theme";
 
 const tabs = [
@@ -27,52 +28,213 @@ const tabs = [
   ["discounts", "Discounts", <PercentRoundedIcon key="discounts" />],
 ];
 
-const cardSx = { border: `1px solid ${theme.border}`, borderRadius: "18px", bgcolor: "#fff", boxShadow: "0 8px 30px rgba(33,22,54,.045)" };
-const primaryButtonSx = { textTransform: "none", borderRadius: "10px", fontWeight: 700, bgcolor: theme.accent, "&:hover": { bgcolor: theme.accent } };
+const cardSx = { border: `1px solid ${theme.border}`, borderRadius: `${theme.radius}px`, bgcolor: theme.surface, boxShadow: theme.shadowSoft };
+const primaryButtonSx = { textTransform: "none", borderRadius: `${theme.radiusSmall}px`, fontWeight: 700, bgcolor: theme.accent, "&:hover": { bgcolor: theme.accent } };
 
 function Empty({ children }) {
   return <Box sx={{ py: 7, textAlign: "center", color: theme.muted, fontSize: 14 }}>{children}</Box>;
 }
 
+function languageForPreview(message) {
+  if (/\p{Script=Devanagari}/u.test(message)) return "hi";
+  const phrase = /\b(?:le raha|le rahi|le rahe|kha raha|kha rahi|kha rahe|use kar|start kar|order kar|cart mein|ke liye|isliye|iske liye|uske liye|kya karu|kya lena|kaise lena|kitni baar|safe hai|theek hai|sahi hai|diabetes hai|sugar hai|insulin le|medicine le|dawai le|dawa le)\b/iu;
+  if (phrase.test(message)) return "hinglish";
+  const signals = message.match(/\b(?:kya|kyu|kyun|kaise|kaisa|kaisi|kaunsi|kaun|hai|hain|hoon|hun|hu|haan|nahi|nahin|mujhe|mera|meri|mere|aap|ap|batao|bataiye|chahiye|karna|karu|karo|lena|leta|leti|sakta|sakti|kitna|kitni|ka|ki|ke|kab|mein|mai|aur|raha|rahi|rahe|wala|wali|liye|abhi|thoda|zyada|jaankari)\b/giu) ?? [];
+  const unique = new Set(signals.map((item) => item.toLocaleLowerCase("en-IN")));
+  const pronoun = /\b(?:mai|mein|mujhe|mera|meri|mere|aap|ap|ham|hum)\b/iu.test(message);
+  const verb = /\b(?:hu|hoon|hun|hai|hain|raha|rahi|rahe|karna|karu|karo|lena|leta|leti|chahiye|sakta|sakti|batao|bataiye)\b/iu.test(message);
+  const englishIntent = /\b(?:what|which|how|can|could|would|please|tell|need|want|should|does|is|are|do|have|taking|product|order|price|support|doctor|dietitian)\b/iu.test(message);
+  return (pronoun && verb) || unique.size >= 2 || (unique.size === 1 && englishIntent) ? "hinglish" : "en";
+}
+
+function WidgetProductCard({ product }) {
+  const [display, setDisplay] = useState({ image: null, rating: null });
+
+  useEffect(() => {
+    let mounted = true;
+    loadProductDisplayData(product.productSlug, product.productUrl).then((data) => {
+      if (mounted) setDisplay(data);
+    });
+    return () => { mounted = false; };
+  }, [product.productSlug, product.productUrl]);
+
+  return (
+    <Box sx={{
+      minWidth: 176,
+      overflow: "hidden",
+      border: "1px solid #ebe5ee",
+      borderRadius: "16px",
+      bgcolor: "#fff",
+      boxShadow: "0 5px 18px rgb(69 44 80 / 6%)",
+    }}>
+      <Box component="a" href={product.productUrl} target="_blank" rel="noopener noreferrer" sx={{ display: "flex", flexDirection: "column", color: "#211b27", textDecoration: "none" }}>
+        <Box sx={{ display: "grid", placeItems: "center", height: 154, bgcolor: "#fbf9fc", overflow: "hidden" }}>
+          {display.image ? (
+            <Box component="img" src={display.image} alt={product.name} sx={{ width: "100%", height: "100%", objectFit: "contain" }} />
+          ) : (
+            <Typography sx={{ color: "#8994a6", fontSize: 12, fontWeight: 750, letterSpacing: ".04em" }}>Muditam</Typography>
+          )}
+        </Box>
+        <Typography sx={{ overflow: "hidden", px: 1.25, pt: 1.1, pb: .25, fontSize: 13, fontWeight: 750, textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {product.name}
+        </Typography>
+        <Stack direction="row" gap={.6} alignItems="center" sx={{ px: 1.25, pb: 1.15, color: "#766d7d", fontSize: 11 }}>
+          {display.rating && (
+            <>
+              <Box component="span" sx={{ color: "#f8c900", fontSize: 12, letterSpacing: 1 }}>{renderStars(display.rating.average)}</Box>
+              <Box component="span">{display.rating.average.toFixed(1)} ({display.rating.count})</Box>
+            </>
+          )}
+        </Stack>
+      </Box>
+      <Button fullWidth disableRipple sx={{
+        width: "calc(100% - 20px)",
+        mx: 1.25,
+        mb: 1.25,
+        minHeight: 34,
+        border: "1px solid #57316f",
+        borderRadius: "10px",
+        color: "#57316f",
+        bgcolor: "#fff",
+        textTransform: "none",
+        fontSize: 12,
+        fontWeight: 750,
+        "&:hover": { bgcolor: "#f7f2f9" },
+      }}>
+        Add to Cart
+      </Button>
+    </Box>
+  );
+}
+
+function WidgetPreviewMessage({ message, recommendedNames = [] }) {
+  if (message.role === "products") {
+    const count = Math.min(message.products.length, 3);
+    return (
+      <Box sx={{ position: "relative", mx: -2, mb: 1.5 }}>
+        <Box sx={{
+          display: "grid",
+          gridAutoFlow: count === 1 ? "row" : message.products.length === 2 ? "row" : "column",
+          gridTemplateColumns: message.products.length === 2 ? "repeat(2, minmax(0, 1fr))" : count === 1 ? "minmax(0, min(240px, 100%))" : undefined,
+          gridAutoColumns: "minmax(176px, 68%)",
+          gap: message.products.length === 2 ? 1 : 1.25,
+          overflowX: message.products.length > 2 ? "auto" : "hidden",
+          px: message.products.length === 2 ? 1.25 : 2,
+          py: 1,
+          scrollbarWidth: "thin",
+        }}>
+          {message.products.map((product) => <WidgetProductCard key={product.productSlug} product={product} />)}
+        </Box>
+      </Box>
+    );
+  }
+  if (message.role === "handoff") {
+    return (
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, mb: 1.5 }}>
+        <Button component="a" href={message.handoff.phoneHref} sx={{ minHeight: 44, border: "1px solid #d9cce0", borderRadius: "13px", color: "#57316f", bgcolor: "#fff", textTransform: "none", fontSize: 12, fontWeight: 750 }}>
+          Call {message.handoff.phoneDisplay}
+        </Button>
+        <Button component="a" href={message.handoff.whatsappUrl} target="_blank" rel="noopener noreferrer" sx={{ minHeight: 44, borderRadius: "13px", color: "#fff", bgcolor: "#209d58", textTransform: "none", fontSize: 12, fontWeight: 750, "&:hover": { bgcolor: "#209d58" } }}>
+          Chat here
+        </Button>
+      </Box>
+    );
+  }
+
+  const isUser = message.role === "user";
+  const names = [...new Set(recommendedNames.filter(Boolean))].sort((left, right) => right.length - left.length);
+  const pattern = names.length ? new RegExp(`(${names.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "giu") : null;
+  return (
+    <Box sx={{
+      width: "fit-content",
+      maxWidth: "86%",
+      ml: isUser ? "auto" : 0,
+      mb: 1.25,
+      px: 1.75,
+      py: 1.35,
+      borderRadius: "17px",
+      borderBottomLeftRadius: isUser ? "17px" : "6px",
+      borderBottomRightRadius: isUser ? "6px" : "17px",
+      color: isUser ? "#fff" : "#302637",
+      bgcolor: isUser ? undefined : "#f7f4f9",
+      background: isUser ? "linear-gradient(145deg, #7d4e99, #70408f)" : undefined,
+      boxShadow: isUser ? "0 4px 12px rgb(112 64 143 / 12%)" : "none",
+      whiteSpace: "pre-wrap",
+      lineHeight: 1.48,
+      fontSize: 13.5,
+      letterSpacing: "-.005em",
+    }}>
+      {!pattern || isUser ? message.content : message.content.split(pattern).map((part, index) => (
+        names.some((name) => name.toLowerCase() === part.toLowerCase())
+          ? <Box key={`${part}-${index}`} component="strong" sx={{ fontWeight: 750 }}>{part}</Box>
+          : part
+      ))}
+    </Box>
+  );
+}
+
 function BotTest() {
   const ids = useRef({ conversationId: crypto.randomUUID(), visitorId: `preview-${crypto.randomUUID()}` });
   const [messages, setMessages] = useState([{ role: "assistant", content: "How can I help you today? You can ask me about any Muditam product." }]);
+  const [recommendedNames, setRecommendedNames] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const send = async (preset) => {
     const text = String(preset ?? input).trim();
     if (!text || loading) return;
-    const history = messages.map((item) => ({ role: item.role, content: item.content })).slice(-20);
+    const history = messages
+      .filter((item) => item.role === "user" || item.role === "assistant")
+      .map((item) => ({ role: item.role, content: item.content }))
+      .slice(-20);
     setMessages((old) => [...old, { role: "user", content: text }]);
     setInput(""); setLoading(true);
     try {
-      const data = await commerceWidgetApi.testBot({ ...ids.current, language: "en", message: text, recentMessages: history });
-      setMessages((old) => [...old, ...data.messages.map((item) => ({ role: "assistant", content: item.text })), ...(data.recommendedProducts?.length ? [{ role: "products", products: data.recommendedProducts }] : [])]);
+      const data = await commerceWidgetApi.testBot({
+        ...ids.current,
+        language: languageForPreview(text),
+        message: text,
+        recentMessages: history,
+        pageContext: { url: window.location.href, pageType: "other" },
+      });
+      const names = (data.recommendedProducts ?? []).map((product) => product.name);
+      setRecommendedNames(names);
+      setMessages((old) => [
+        ...old,
+        ...data.messages.map((item) => ({ role: "assistant", content: item.text })),
+        ...(data.recommendedProducts?.length ? [{ role: "products", products: data.recommendedProducts }] : []),
+        ...(data.handoff ? [{ role: "handoff", handoff: data.handoff }] : []),
+      ]);
     } catch (error) {
-      setMessages((old) => [...old, { role: "assistant", content: `Could not test the bot: ${error.message}` }]);
+      setMessages((old) => [...old, { role: "assistant", content: "I’m having trouble connecting right now. Please try again in a moment." }]);
     } finally { setLoading(false); }
   };
-  const reset = () => { ids.current = { conversationId: crypto.randomUUID(), visitorId: `preview-${crypto.randomUUID()}` }; setMessages([{ role: "assistant", content: "How can I help you today? You can ask me about any Muditam product." }]); };
-  return <Stack direction={{ xs: "column", lg: "row" }} spacing={3}>
+  const reset = () => { ids.current = { conversationId: crypto.randomUUID(), visitorId: `preview-${crypto.randomUUID()}` }; setRecommendedNames([]); setMessages([{ role: "assistant", content: "How can I help you today? You can ask me about any Muditam product." }]); };
+  return <Stack direction={{ xs: "column", md: "row" }} spacing={2.5} alignItems="flex-start" sx={{ minWidth: 0 }}>
     <Box sx={{ flex: 1 }}>
-      <Typography variant="h5" fontWeight={750}>Test your bot</Typography>
-      <Typography color="text.secondary" sx={{ mt: .5 }}>This uses the live knowledge base but is marked as an internal test session.</Typography>
-      <Stack spacing={1.2} sx={{ mt: 4, maxWidth: 560 }}>
+      <Typography sx={{ fontSize: { xs: 24, md: 28 }, fontWeight: 760, color: theme.ink }}>Test your bot</Typography>
+      <Typography color="text.secondary" sx={{ mt: .5, fontSize: 14 }}>This uses the live knowledge base but is marked as an internal test session.</Typography>
+      <Stack spacing={1.1} sx={{ mt: 3, maxWidth: 560 }}>
         {["Suggest something for diabetes", "What can support fatty liver?", "How long does Karela Jamun Fizz take to show results?"].map((item) =>
-          <Button key={item} variant="outlined" onClick={() => send(item)} sx={{ justifyContent: "flex-start", textTransform: "none", borderRadius: 3, color: theme.ink, borderColor: theme.border }}>{item}</Button>)}
+          <Button key={item} variant="outlined" onClick={() => send(item)} sx={{ justifyContent: "flex-start", textTransform: "none", borderRadius: 2, color: theme.ink, borderColor: theme.border, minHeight: 42, px: 1.5, fontSize: 14 }}>{item}</Button>)}
       </Stack>
     </Box>
-    <Paper sx={{ ...cardSx, width: { xs: "100%", lg: 430 }, height: 630, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 2.5, py: 2, bgcolor: theme.accent, color: "white" }}>
-        <Box><Typography fontWeight={750}>Muditam Health Expert</Typography><Typography fontSize={12.5} sx={{ opacity: .8 }}>● Online</Typography></Box>
-        <Button onClick={reset} sx={{ color: "white", textTransform: "none" }}>New chat</Button>
+    <Paper sx={{ flex: "0 0 400px", width: { xs: "100%", md: 400 }, maxWidth: "100%", height: 660, overflow: "hidden", display: "grid", gridTemplateRows: "auto 1fr auto", border: "1px solid rgb(112 64 143 / 12%)", borderRadius: "24px", bgcolor: "#fdfcfd", boxShadow: "0 28px 80px rgb(47 31 55 / 12%), 0 4px 18px rgb(47 31 55 / 6%)" }}>
+      <Stack direction="row" alignItems="center" gap={1.4} sx={{ px: 2, py: 1.85, borderBottom: "1px solid #ebe5ee", color: "#211b27", bgcolor: "rgb(255 255 255 / 94%)" }}>
+        <Box sx={{ display: "grid", width: 38, height: 38, placeItems: "center", borderRadius: "50%", color: "#fff", bgcolor: "#57316f", background: "linear-gradient(145deg, #8457a0, #57316f)", fontFamily: "Georgia, serif", fontSize: 23, fontWeight: 700 }}>m</Box>
+        <Box sx={{ flex: 1 }}><Typography sx={{ fontSize: 14, fontWeight: 700, letterSpacing: "-.01em" }}>Muditam Expert</Typography><Typography sx={{ mt: .35, color: "#766d7d", fontSize: 10.5 }}><Box component="span" sx={{ display: "inline-block", width: 6, height: 6, mr: .5, borderRadius: "50%", bgcolor: "#38a169" }} />Online · Typically replies instantly</Typography></Box>
+        <Button onClick={reset} aria-label="New chat" sx={{ display: "grid", minWidth: 34, width: 34, height: 34, p: 0, borderRadius: "10px", color: "#756d7b", bgcolor: "transparent", fontSize: 23, lineHeight: 1, textTransform: "none", "&:hover": { bgcolor: "#f5f0f8", color: "#57316f" } }}>×</Button>
       </Stack>
-      <Stack spacing={1.2} sx={{ flex: 1, overflow: "auto", p: 2 }}>
-        {messages.map((message, index) => message.role === "products" ? <Stack key={index} direction="row" spacing={1} sx={{ overflowX: "auto" }}>{message.products.map((product) => <Paper key={product.productSlug} variant="outlined" sx={{ p: 1.5, minWidth: 210, borderRadius: 3 }}><Typography fontWeight={700}>{product.name}</Typography><Typography fontSize={12.5} color="text.secondary" sx={{ mt: .5 }}>{product.reason}</Typography></Paper>)}</Stack> :
-          <Box key={index} sx={{ alignSelf: message.role === "user" ? "flex-end" : "flex-start", maxWidth: "85%", px: 1.7, py: 1.2, borderRadius: 3, bgcolor: message.role === "user" ? theme.accent : theme.accentSoft, color: message.role === "user" ? "white" : theme.ink }}><Typography fontSize={14}>{message.content}</Typography></Box>)}
-        {loading && <Box sx={{ alignSelf: "flex-start", p: 1.5 }}><CircularProgress size={18} /></Box>}
-      </Stack>
-      <Stack direction="row" spacing={1} sx={{ p: 1.5, borderTop: `1px solid ${theme.border}` }}><TextField fullWidth size="small" placeholder="Ask the bot..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} /><IconButton onClick={() => send()} sx={{ bgcolor: theme.accent, color: "white", "&:hover": { bgcolor: theme.accent } }}><SendRoundedIcon /></IconButton></Stack>
+      <Box sx={{ overflowY: "auto", px: 2, pt: 2.5, pb: 1.75, bgcolor: "#fdfcfd", scrollbarColor: "#d9cce0 transparent" }}>
+        {messages.map((message, index) => <WidgetPreviewMessage key={index} message={message} recommendedNames={recommendedNames} />)}
+        {loading && <Box sx={{ display: "inline-flex", alignItems: "center", gap: .65, minWidth: 54, minHeight: 38, px: 1.9, mb: 1.25, borderRadius: "17px", borderBottomLeftRadius: "6px", bgcolor: "#f7f4f9" }}>{[0, 1, 2].map((dot) => <Box key={dot} sx={{ width: 7, height: 7, borderRadius: "50%", bgcolor: "#70408f", opacity: .72 }} />)}</Box>}
+      </Box>
+      <Box component="form" onSubmit={(event) => { event.preventDefault(); send(); }} sx={{ p: "12px 14px 14px", borderTop: "1px solid #ebe5ee", bgcolor: "#fff" }}>
+        <Stack direction="row" gap={1}>
+          <Box component="input" maxLength={2000} autoComplete="off" placeholder="Ask about a product…" value={input} onChange={(event) => setInput(event.target.value)} sx={{ minWidth: 0, flex: 1, px: 1.75, py: 1.5, border: "1px solid #ded5e3", borderRadius: "14px", color: "#211b27", bgcolor: "#fbf9fc", outline: "none", fontSize: 14, "&::placeholder": { color: "#a098a5" }, "&:focus": { borderColor: "#a987b9", bgcolor: "#fff", boxShadow: "0 0 0 3px rgb(112 64 143 / 10%)" } }} />
+          <IconButton type="submit" disabled={loading} sx={{ flex: "0 0 44px", width: 44, height: 44, borderRadius: "14px", color: "#fff", bgcolor: "#70408f", boxShadow: "0 8px 18px rgb(112 64 143 / 22%)", "&:hover": { bgcolor: "#57316f" }, "&:disabled": { color: "#fff", bgcolor: "#9b7caf", opacity: .75 } }}><SendRoundedIcon sx={{ fontSize: 21 }} /></IconButton>
+        </Stack>
+        <Typography sx={{ display: "block", mt: .8, color: "#958d9b", fontSize: 10.5 }}>AI can make mistakes. Please verify important information.</Typography>
+      </Box>
     </Paper>
   </Stack>;
 }
@@ -190,7 +352,7 @@ function Discounts() {
 function WidgetBotFlow() {
   const [tab, setTab] = useState("test"); const [answerQuestion, setAnswerQuestion] = useState("");
   const openAddition = (question = "") => { setAnswerQuestion(question); setTab("addition"); };
-  return <Box sx={{ maxWidth: 1500, mx: "auto" }}><Paper sx={{ ...cardSx, mb: 3, overflowX: "auto" }}><Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" scrollButtons="auto" sx={{ px: 1, "& .MuiTabs-indicator": { height: 3, borderRadius: "3px 3px 0 0", bgcolor: theme.accent } }}>{tabs.map(([value, label, icon]) => <Tab key={value} value={value} label={label} icon={icon} iconPosition="start" disableRipple sx={{ minHeight: 68, textTransform: "none", fontWeight: 700, border: 0, bgcolor: "transparent", "&.Mui-selected": { color: theme.accent, bgcolor: "transparent" }, "&:focus, &:focus-visible": { outline: "none", bgcolor: "transparent" } }} />)}</Tabs></Paper>
+  return <Box sx={{ maxWidth: 1180, mx: "auto", minWidth: 0 }}><Paper sx={{ ...cardSx, mb: 2.5, overflow: "hidden" }}><Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" scrollButtons="auto" sx={{ px: .5, minHeight: 52, "& .MuiTabs-indicator": { height: 3, borderRadius: "3px 3px 0 0", bgcolor: theme.accent } }}>{tabs.map(([value, label, icon]) => <Tab key={value} value={value} label={label} icon={icon} iconPosition="start" disableRipple sx={{ minHeight: 52, minWidth: 0, px: { xs: 1.5, md: 2 }, textTransform: "none", fontSize: 13.5, fontWeight: 700, border: 0, bgcolor: "transparent", "& .MuiSvgIcon-root": { fontSize: 20, mr: .7 }, "&.Mui-selected": { color: theme.accent, bgcolor: "transparent" }, "&:focus, &:focus-visible": { outline: "none", bgcolor: "transparent" } }} />)}</Tabs></Paper>
     <Box>{tab === "test" && <BotTest />}{tab === "source" && <DataSource onAdd={() => openAddition()} />}{tab === "addition" && <DataAddition key={answerQuestion} initialQuestion={answerQuestion} />}{tab === "missing" && <MissingInfo onAdd={openAddition} />}{tab === "discounts" && <Discounts />}</Box>
   </Box>;
 }
