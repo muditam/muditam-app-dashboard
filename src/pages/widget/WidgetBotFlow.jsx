@@ -173,8 +173,21 @@ function WidgetPreviewMessage({ message, recommendedNames = [] }) {
   );
 }
 
+const BOT_TEST_SESSION_KEY = "muditam_ai_bot_test_session_v1";
+function loadBotTestSession() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(BOT_TEST_SESSION_KEY) || "null");
+    if (stored?.conversationId && stored?.visitorId) return stored;
+  } catch {
+    // Ignore malformed local preview state and create a fresh stable session.
+  }
+  const next = { conversationId: crypto.randomUUID(), visitorId: `preview-${crypto.randomUUID()}` };
+  localStorage.setItem(BOT_TEST_SESSION_KEY, JSON.stringify(next));
+  return next;
+}
+
 function BotTest() {
-  const ids = useRef({ conversationId: crypto.randomUUID(), visitorId: `preview-${crypto.randomUUID()}` });
+  const ids = useRef(loadBotTestSession());
   const [messages, setMessages] = useState([{ role: "assistant", content: "How can I help you today? You can ask me about any Muditam product." }]);
   const [recommendedNames, setRecommendedNames] = useState([]);
   const [input, setInput] = useState("");
@@ -208,7 +221,6 @@ function BotTest() {
       setMessages((old) => [...old, { role: "assistant", content: "I’m having trouble connecting right now. Please try again in a moment." }]);
     } finally { setLoading(false); }
   };
-  const reset = () => { ids.current = { conversationId: crypto.randomUUID(), visitorId: `preview-${crypto.randomUUID()}` }; setRecommendedNames([]); setMessages([{ role: "assistant", content: "How can I help you today? You can ask me about any Muditam product." }]); };
   return <Stack direction={{ xs: "column", md: "row" }} spacing={2.5} alignItems="flex-start" sx={{ minWidth: 0 }}>
     <Box sx={{ flex: 1 }}>
       <Typography sx={{ fontSize: { xs: 24, md: 28 }, fontWeight: 760, color: theme.ink }}>Test your bot</Typography>
@@ -222,7 +234,6 @@ function BotTest() {
       <Stack direction="row" alignItems="center" gap={1.4} sx={{ px: 2, py: 1.85, borderBottom: "1px solid #ebe5ee", color: "#211b27", bgcolor: "rgb(255 255 255 / 94%)" }}>
         <Box sx={{ display: "grid", width: 38, height: 38, placeItems: "center", borderRadius: "50%", color: "#fff", bgcolor: "#57316f", background: "linear-gradient(145deg, #8457a0, #57316f)", fontFamily: "Georgia, serif", fontSize: 23, fontWeight: 700 }}>m</Box>
         <Box sx={{ flex: 1 }}><Typography sx={{ fontSize: 14, fontWeight: 700, letterSpacing: "-.01em" }}>Muditam Expert</Typography><Typography sx={{ mt: .35, color: "#766d7d", fontSize: 10.5 }}><Box component="span" sx={{ display: "inline-block", width: 6, height: 6, mr: .5, borderRadius: "50%", bgcolor: "#38a169" }} />Online · Typically replies instantly</Typography></Box>
-        <Button onClick={reset} aria-label="New chat" sx={{ display: "grid", minWidth: 34, width: 34, height: 34, p: 0, borderRadius: "10px", color: "#756d7b", bgcolor: "transparent", fontSize: 23, lineHeight: 1, textTransform: "none", "&:hover": { bgcolor: "#f5f0f8", color: "#57316f" } }}>×</Button>
       </Stack>
       <Box sx={{ overflowY: "auto", px: 2, pt: 2.5, pb: 1.75, bgcolor: "#fdfcfd", scrollbarColor: "#d9cce0 transparent" }}>
         {messages.map((message, index) => <WidgetPreviewMessage key={index} message={message} recommendedNames={recommendedNames} />)}
@@ -240,6 +251,35 @@ function BotTest() {
 }
 
 const splitList = (value) => [...new Set(String(value).split(",").map((item) => item.trim()).filter(Boolean))];
+const productFieldKeys = ["concern", "keyBenefits", "quantity", "usage", "warning", "moreInfo", "other", "variantFormats"];
+
+function normalizeProductForSave(product) {
+  return {
+    approvedDescription: String(product.approvedDescription || ""),
+    fields: Object.fromEntries(productFieldKeys.map((key) => [key, String(product.fields?.[key] || "")])),
+    tags: splitList(product.tagsText == null ? (product.tags || []).join(", ") : product.tagsText),
+    aliases: splitList(product.aliasesText == null ? (product.aliases || []).join(", ") : product.aliasesText),
+    visible: product.visible !== false,
+    overallRank: product.overallRank ?? null,
+    tagRanks: Object.fromEntries(Object.entries(product.tagRanks || {}).filter(([, rank]) => Number.isInteger(rank) && rank > 0).sort(([a], [b]) => a.localeCompare(b))),
+  };
+}
+
+function hasDialogChanges(editing) {
+  if (!editing) return false;
+  if (editing.type === "product") return JSON.stringify(normalizeProductForSave(editing)) !== editing.originalSnapshot;
+  if (editing.type === "knowledge") return String(editing.title || "") !== String(editing.originalTitle || "") || String(editing.content || "") !== String(editing.originalContent || "");
+  return false;
+}
+
+function openProductEditor(item) {
+  const product = { type: "product", ...item, tagsText: (item.tags || []).join(", "), aliasesText: (item.aliases || []).join(", ") };
+  return { ...product, originalSnapshot: JSON.stringify(normalizeProductForSave(product)) };
+}
+
+function openKnowledgeEditor(item) {
+  return { type: "knowledge", ...item, originalTitle: String(item.title || ""), originalContent: String(item.content || "") };
+}
 
 function EditableProductField({ label, field, editing, setEditing, rows = 3, placeholder }) {
   return <Accordion variant="outlined" disableGutters sx={{ borderRadius: "12px !important", "&:before": { display: "none" } }}>
@@ -269,6 +309,7 @@ function ProductDetailEditor({ editing, setEditing }) {
     <EditableProductField label="Quantity" field="quantity" editing={editing} setEditing={setEditing} />
     <EditableProductField label="Usage" field="usage" editing={editing} setEditing={setEditing} placeholder={editing.shopify?.dosage || "Add approved usage information"} />
     <EditableProductField label="Warning / disclaimer" field="warning" editing={editing} setEditing={setEditing} />
+    <EditableProductField label="More info" field="moreInfo" rows={7} editing={editing} setEditing={setEditing} placeholder="Add extra approved product knowledge, FAQs, timelines, compatibility notes, side effects, or language variants." />
     <EditableProductField label="Other" field="other" editing={editing} setEditing={setEditing} />
     <EditableProductField label="Variant formats" field="variantFormats" editing={editing} setEditing={setEditing} />
     {editing.legacyCategory && <Alert severity="info">Legacy system category: <strong>{editing.legacyCategory}</strong>. This is shown for reference only and no longer controls chatbot recommendations.</Alert>}
@@ -307,10 +348,11 @@ function DataSource({ onAdd }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [kind]);
   const filtered = useMemo(() => data.filter((item) => `${item.name ?? item.title} ${item.slug ?? item.content}`.toLowerCase().includes(search.toLowerCase())), [data, search]);
-  const saveProduct = async (product, patch = {}) => { setSaving(true); setError(""); try { const visible = patch.visible ?? product.visible ?? product.recommendationPriority !== "hidden"; const payload = { recommendationPriority: visible ? "normal" : "hidden", visible, overallRank: product.overallRank ?? null, tagRanks: Object.fromEntries(Object.entries(product.tagRanks || {}).filter(([, rank]) => Number.isInteger(rank) && rank > 0)), tags: product.tagsText == null ? (product.tags || []) : splitList(product.tagsText), aliases: product.aliasesText == null ? (product.aliases || []) : splitList(product.aliasesText), approvedDescription: product.approvedDescription || "", fields: { concern: "", keyBenefits: "", quantity: "", usage: "", warning: "", other: "", variantFormats: "", ...(product.fields || {}) }, ...patch }; const result = await commerceWidgetApi.saveBotProduct(product.slug, payload); setData((items) => items.map((item) => item.slug === product.slug ? result.product : item)); setEditing(null); setNotice(`${product.name} settings saved.`); } catch (e) { setError(e.message); } finally { setSaving(false); } };
+  const saveProduct = async (product, patch = {}) => { setSaving(true); setError(""); try { const visible = patch.visible ?? product.visible ?? product.recommendationPriority !== "hidden"; const payload = { recommendationPriority: visible ? "normal" : "hidden", visible, overallRank: product.overallRank ?? null, tagRanks: Object.fromEntries(Object.entries(product.tagRanks || {}).filter(([, rank]) => Number.isInteger(rank) && rank > 0)), tags: product.tagsText == null ? (product.tags || []) : splitList(product.tagsText), aliases: product.aliasesText == null ? (product.aliases || []) : splitList(product.aliasesText), approvedDescription: product.approvedDescription || "", fields: { concern: "", keyBenefits: "", quantity: "", usage: "", warning: "", moreInfo: "", other: "", variantFormats: "", ...(product.fields || {}) }, ...patch }; const result = await commerceWidgetApi.saveBotProduct(product.slug, payload); setData((items) => items.map((item) => item.slug === product.slug ? result.product : item)); setEditing(null); setNotice(`${product.name} settings saved.`); } catch (e) { setError(e.message); } finally { setSaving(false); } };
   const saveKnowledge = async () => { setSaving(true); setError(""); try { const result = await commerceWidgetApi.updateBotKnowledge(editing.key, { title: editing.title, content: editing.content }); setData((items) => items.map((item) => item.key === editing.key ? result.source : item)); setEditing(null); setNotice("Knowledge updated and re-indexed."); } catch (e) { setError(e.message); } finally { setSaving(false); } };
   const deleteKnowledge = async (item) => { if (!window.confirm(`Remove “${item.title}” from the bot knowledge base?`)) return; try { await commerceWidgetApi.deleteBotKnowledge(item.key); setData((items) => items.filter((entry) => entry.key !== item.key)); setNotice("Knowledge removed from chatbot answers."); } catch (e) { setError(e.message); } };
   const applyBulk = async () => { setSaving(true); setError(""); try { const result = await commerceWidgetApi.bulkSaveBotProducts({ tags: splitList(bulkTags), recommendationPriority: bulkPriority }); setNotice(`${result.matched} products updated.`); setBulkTags(""); await load(); } catch (e) { setError(e.message); } finally { setSaving(false); } };
+  const dialogHasChanges = hasDialogChanges(editing);
   return <Box><Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={2}><Box><Typography variant="h5" fontWeight={750}>Data source</Typography><Typography color="text.secondary" sx={{ mt: .5 }}>Verified information currently available to the chatbot.</Typography></Box><Stack direction="row" spacing={1}><Button startIcon={<RefreshRoundedIcon />} variant="outlined" onClick={load} sx={{ textTransform: "none", borderRadius: 2.5 }}>Refresh</Button>{kind === "knowledge" && <Button startIcon={<AddRoundedIcon />} variant="contained" onClick={onAdd} sx={primaryButtonSx}>Add data</Button>}</Stack></Stack>
     <Tabs value={kind} onChange={(_, value) => setKind(value)} sx={{ mt: 3 }}><Tab value="products" label="Products" /><Tab value="knowledge" label="Non-product data" /><Tab value="bulk" label="Bulk actions" /></Tabs>
     {notice && <Alert severity="success" onClose={() => setNotice("")} sx={{ mt: 2 }}>{notice}</Alert>}
@@ -318,11 +360,11 @@ function DataSource({ onAdd }) {
     <TextField fullWidth placeholder="Search data sources" value={search} onChange={(e) => setSearch(e.target.value)} sx={{ my: 2.5 }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon /></InputAdornment> }} />
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
     <TableContainer component={Paper} sx={cardSx}><Table><TableHead><TableRow>{kind === "products" ? <><TableCell>Product</TableCell><TableCell>Visibility</TableCell><TableCell>Overall order</TableCell><TableCell>Tags and tag order</TableCell><TableCell align="right">Action</TableCell></> : <><TableCell>Source</TableCell><TableCell>Content</TableCell><TableCell>Managed by</TableCell><TableCell align="right">Action</TableCell></>}</TableRow></TableHead><TableBody>
-      {filtered.map((item) => kind === "products" ? <TableRow key={item.slug}><TableCell><Stack direction="row" spacing={1.5} alignItems="center"><Avatar src={item.imageUrl || undefined} variant="rounded">{item.name?.[0]}</Avatar><Box><Stack direction="row" alignItems="center" spacing={.5}><Typography fontWeight={700}>{item.name}</Typography><IconButton size="small" component="a" href={item.productUrl} target="_blank"><OpenInNewRoundedIcon sx={{ fontSize: 15 }} /></IconButton></Stack><Typography fontSize={12} color="text.secondary">{item.slug}</Typography></Box></Stack></TableCell><TableCell><Chip size="small" color={item.visible === false ? "default" : "success"} label={item.visible === false ? "Hidden" : "Visible"} /></TableCell><TableCell><Typography fontWeight={700}>{item.overallRank ?? "—"}</Typography></TableCell><TableCell><Stack direction="row" gap={.7} useFlexGap flexWrap="wrap" sx={{ maxWidth: 420 }}>{item.tags?.length ? item.tags.map((tag) => <Chip key={tag} size="small" variant="outlined" label={`${tag}${item.tagRanks?.[tag.toLowerCase()] ? ` · ${item.tagRanks[tag.toLowerCase()]}` : ""}`} />) : <Typography color="text.secondary">No tags</Typography>}</Stack></TableCell><TableCell align="right"><IconButton onClick={() => setEditing({ type: "product", ...item, tagsText: (item.tags || []).join(", "), aliasesText: (item.aliases || []).join(", ") })}><EditOutlinedIcon /></IconButton></TableCell></TableRow> :
-      <TableRow key={item.key}><TableCell><Typography fontWeight={700}>{item.title}</Typography><Typography fontSize={12} color="text.secondary">{item.sourceName}</Typography></TableCell><TableCell><Typography fontSize={13.5} sx={{ maxWidth: 680 }} noWrap>{item.content}</Typography></TableCell><TableCell><Chip size="small" label={item.managedBy === "bot_flow" ? "Dashboard" : "Platform"} /></TableCell><TableCell align="right">{item.managedBy === "bot_flow" && <><IconButton onClick={() => setEditing({ type: "knowledge", ...item })}><EditOutlinedIcon /></IconButton><IconButton color="error" onClick={() => deleteKnowledge(item)}><DeleteOutlineRoundedIcon /></IconButton></>}</TableCell></TableRow>)}
+      {filtered.map((item) => kind === "products" ? <TableRow key={item.slug}><TableCell><Stack direction="row" spacing={1.5} alignItems="center"><Avatar src={item.imageUrl || undefined} variant="rounded">{item.name?.[0]}</Avatar><Box><Stack direction="row" alignItems="center" spacing={.5}><Typography fontWeight={700}>{item.name}</Typography><IconButton size="small" component="a" href={item.productUrl} target="_blank"><OpenInNewRoundedIcon sx={{ fontSize: 15 }} /></IconButton></Stack><Typography fontSize={12} color="text.secondary">{item.slug}</Typography></Box></Stack></TableCell><TableCell><Chip size="small" color={item.visible === false ? "default" : "success"} label={item.visible === false ? "Hidden" : "Visible"} /></TableCell><TableCell><Typography fontWeight={700}>{item.overallRank ?? "—"}</Typography></TableCell><TableCell><Stack direction="row" gap={.7} useFlexGap flexWrap="wrap" sx={{ maxWidth: 420 }}>{item.tags?.length ? item.tags.map((tag) => <Chip key={tag} size="small" variant="outlined" label={`${tag}${item.tagRanks?.[tag.toLowerCase()] ? ` · ${item.tagRanks[tag.toLowerCase()]}` : ""}`} />) : <Typography color="text.secondary">No tags</Typography>}</Stack></TableCell><TableCell align="right"><IconButton onClick={() => setEditing(openProductEditor(item))}><EditOutlinedIcon /></IconButton></TableCell></TableRow> :
+      <TableRow key={item.key}><TableCell><Typography fontWeight={700}>{item.title}</Typography><Typography fontSize={12} color="text.secondary">{item.sourceName}</Typography></TableCell><TableCell><Typography fontSize={13.5} sx={{ maxWidth: 680 }} noWrap>{item.content}</Typography></TableCell><TableCell><Chip size="small" label={item.managedBy === "bot_flow" ? "Dashboard" : "Platform"} /></TableCell><TableCell align="right">{item.managedBy === "bot_flow" && <><IconButton onClick={() => setEditing(openKnowledgeEditor(item))}><EditOutlinedIcon /></IconButton><IconButton color="error" onClick={() => deleteKnowledge(item)}><DeleteOutlineRoundedIcon /></IconButton></>}</TableCell></TableRow>)}
       {!loading && !filtered.length && <TableRow><TableCell colSpan={4}><Empty>No data sources found.</Empty></TableCell></TableRow>}
     </TableBody></Table>{loading && <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /></Box>}</TableContainer></>}
-    <Dialog open={Boolean(editing)} onClose={() => !saving && setEditing(null)} fullWidth maxWidth="md"><DialogTitle>{editing?.type === "product" ? "View product details" : "Edit knowledge"}</DialogTitle><DialogContent>{editing?.type === "product" ? <ProductDetailEditor editing={editing} setEditing={setEditing} /> : editing && <Stack spacing={2.2} sx={{ mt: 1 }}><TextField label="Title" required value={editing.title || ""} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /><TextField label="Content" required multiline minRows={10} value={editing.content || ""} onChange={(e) => setEditing({ ...editing, content: e.target.value })} helperText="Saving will re-index this content for future chatbot answers." /></Stack>}</DialogContent><DialogActions><Button onClick={() => setEditing(null)} disabled={saving}>Close</Button><Button variant="contained" disabled={saving || (editing?.type === "knowledge" && (!editing.title?.trim() || editing.content?.trim().length < 10))} onClick={() => editing?.type === "product" ? saveProduct(editing) : saveKnowledge()} sx={primaryButtonSx}>{saving ? "Saving..." : "Save changes"}</Button></DialogActions></Dialog>
+    <Dialog open={Boolean(editing)} onClose={() => !saving && setEditing(null)} fullWidth maxWidth="md"><DialogTitle>{editing?.type === "product" ? "View product details" : "Edit knowledge"}</DialogTitle><DialogContent>{editing?.type === "product" ? <ProductDetailEditor editing={editing} setEditing={setEditing} /> : editing && <Stack spacing={2.2} sx={{ mt: 1 }}><TextField label="Title" required value={editing.title || ""} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /><TextField label="Content" required multiline minRows={10} value={editing.content || ""} onChange={(e) => setEditing({ ...editing, content: e.target.value })} helperText="Saving will re-index this content for future chatbot answers." /></Stack>}</DialogContent><DialogActions><Button onClick={() => setEditing(null)} disabled={saving}>Close</Button><Button variant="contained" disabled={saving || !dialogHasChanges || (editing?.type === "knowledge" && (!editing.title?.trim() || editing.content?.trim().length < 10))} onClick={() => editing?.type === "product" ? saveProduct(editing) : saveKnowledge()} sx={primaryButtonSx}>{saving ? "Saving..." : "Save changes"}</Button></DialogActions></Dialog>
   </Box>;
 }
 
