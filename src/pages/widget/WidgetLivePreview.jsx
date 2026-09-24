@@ -41,9 +41,12 @@ function Launcher({ config, accent, nudgeBackground, nudgeTextColor, nudgeBorder
         {config.launcherImage
           ? <Box component="img" src={config.launcherImage} alt="" sx={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
           : <ChatBubbleOutlineRoundedIcon sx={{ fontSize: size * 0.43 }} />}
+        <Box sx={{ position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, px: 0.6, borderRadius: 99, display: "grid", placeItems: "center", color: "#fff", bgcolor: "#f0525f", border: "2px solid #fff", boxShadow: "0 2px 7px rgba(87,49,111,.16)", fontSize: 10, fontWeight: 800, lineHeight: 1 }}>
+          1
+        </Box>
         <Box sx={{ position: "absolute", right: -1, bottom: 2, width: 14, height: 14, borderRadius: "50%", bgcolor: "#16b979", border: "3px solid #fff" }} />
       </Box>
-      {showNudge && (
+      {showNudge && config.nudgeEnabled !== false && (
         <Box sx={{ position: "relative", px: 2, py: 1.25, borderRadius: 99, bgcolor: nudgeBackground, color: nudgeTextColor, border: `1px solid ${nudgeBorder}`, boxShadow: `0 9px 22px ${nudgeBackground}35`, whiteSpace: "nowrap" }}>
           <Typography sx={{ color: nudgeTextColor, fontSize: 13.5, fontWeight: 700 }}>{config.nudgeText?.trim() || "Chat with live agent"}</Typography>
           <Box sx={{ position: "absolute", top: -8, right: config.widgetPosition === "left" ? "auto" : -7, left: config.widgetPosition === "left" ? -7 : "auto", width: 25, height: 25, borderRadius: "50%", display: "grid", placeItems: "center", color: theme.muted, bgcolor: "#fff", boxShadow: "0 2px 8px rgba(31,20,37,.15)" }}>

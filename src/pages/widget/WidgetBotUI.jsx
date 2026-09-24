@@ -156,8 +156,15 @@ function WidgetBotUI() {
   const handleSave = () => {
     setSaving(true);
     setError(null);
+    const submittedConfig = config;
     commerceWidgetApi.saveWidgetConfig(config)
-      .then((data) => { setConfig(data); setSaved(true); })
+      .then((data) => {
+        setConfig({
+          ...data,
+          nudgeEnabled: data.nudgeEnabled ?? submittedConfig.nudgeEnabled ?? true,
+        });
+        setSaved(true);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setSaving(false));
   };
@@ -486,14 +493,29 @@ function WidgetBotUI() {
               </Typography>
             </Box>
             <Box>
-              <FieldLabel>Invitation popup</FieldLabel>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                <FieldLabel>Invitation popup</FieldLabel>
+                <Stack direction="row" alignItems="center" gap={1}>
+                  <Typography sx={{ fontSize: 12, color: theme.muted }}>
+                    {config.nudgeEnabled === false ? "Disabled" : "Enabled"}
+                  </Typography>
+                  <Switch
+                    size="small"
+                    checked={config.nudgeEnabled !== false}
+                    onChange={(event) => updateField("nudgeEnabled", event.target.checked)}
+                  />
+                </Stack>
+              </Stack>
               <TextField
                 size="small"
                 fullWidth
                 value={config.nudgeText}
                 inputProps={{ maxLength: 60 }}
+                disabled={config.nudgeEnabled === false}
                 onChange={(event) => updateField("nudgeText", event.target.value)}
-                helperText="Appears after 3 seconds, hides after 5 seconds, and returns on icon hover."
+                helperText={config.nudgeEnabled === false
+                  ? "Popup is disabled. The launcher still shows a 1-message badge."
+                  : "Appears after 3 seconds, hides after 5 seconds, and returns on icon hover."}
               />
             </Box>
             <Box>
