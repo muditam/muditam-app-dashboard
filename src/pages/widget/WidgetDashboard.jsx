@@ -15,8 +15,8 @@ const subTabs = ["Overview", "Sales"];
 
 const kpis = [
   { key: "totalConversations", label: "Total conversations", overviewKey: "totalConversations", icon: ForumRoundedIcon },
-  { key: "assistedOrderValue", label: "Assisted order value", overviewKey: null, icon: PaidRoundedIcon },
-  { key: "orderValueUtm", label: "Order value (UTM)", overviewKey: null, icon: TrendingUpRoundedIcon },
+  { key: "assistedOrderValue", label: "Assisted order value", overviewKey: "assistedOrderValue", prefix: "Rs ", icon: PaidRoundedIcon },
+  { key: "orderValueUtm", label: "Order value (UTM)", overviewKey: "orderValueUtm", prefix: "Rs ", icon: TrendingUpRoundedIcon },
   { key: "addToCartAssisted", label: "Add to cart assisted", overviewKey: "addToCartAssisted", icon: ShoppingCartRoundedIcon },
   { key: "resolutionRate", label: "Resolution rate", overviewKey: "resolutionRate", suffix: "%", icon: CheckCircleRoundedIcon },
   { key: "leadCaptures", label: "Lead captures", overviewKey: "leadCaptures", icon: MailRoundedIcon },
@@ -31,7 +31,7 @@ function SectionLabel({ children }) {
   );
 }
 
-function KpiCard({ label, value, suffix, icon: Icon }) {
+function KpiCard({ label, value, prefix, suffix, icon: Icon }) {
   const available = value !== undefined && value !== null;
   return (
     <Box
@@ -64,7 +64,7 @@ function KpiCard({ label, value, suffix, icon: Icon }) {
         </Box>
       </Stack>
       <Typography sx={{ fontSize: 30, fontWeight: 760, color: available ? theme.ink : theme.faint, lineHeight: 1.05, mt: 2.8 }}>
-        {available ? `${value}${suffix ?? ""}` : "—"}
+        {available ? `${prefix ?? ""}${value}${suffix ?? ""}` : "—"}
       </Typography>
     </Box>
   );
@@ -286,6 +286,7 @@ function WidgetDashboard() {
                   <KpiCard
                     key={kpi.key}
                     label={kpi.label}
+                    prefix={kpi.prefix}
                     suffix={kpi.suffix}
                     icon={kpi.icon}
                     value={kpi.overviewKey && overview ? overview[kpi.overviewKey] : undefined}
