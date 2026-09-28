@@ -40,6 +40,7 @@ const navItems = [
 ];
 
 const sidebarWidth = 152;
+const LOGIN_URL = "https://login.60brands.com/login";
 
 function WidgetLayout() {
   const location = useLocation();
@@ -60,6 +61,7 @@ function WidgetLayout() {
   const handleLogout = () => {
     logout();
     setAuthed(false);
+    window.location.assign(LOGIN_URL);
   };
 
   return (
@@ -132,6 +134,24 @@ function WidgetLayout() {
         <Box sx={{ flex: 1 }} />
         <Button
           disableRipple
+          onClick={() => window.location.assign("https://login.60brands.com/apps")}
+          sx={{
+            justifyContent: "flex-start",
+            minHeight: 32,
+            px: 0.9,
+            mb: 0.35,
+            borderRadius: `${theme.radiusSmall}px`,
+            color: theme.accent,
+            textTransform: "none",
+            fontSize: 11.5,
+            fontWeight: 700,
+            "&:hover": { bgcolor: theme.accentSoft },
+          }}
+        >
+          All applications
+        </Button>
+        <Button
+          disableRipple
           onClick={handleLogout}
           startIcon={<LogoutRoundedIcon sx={{ fontSize: 18 }} />}
           sx={{
@@ -201,6 +221,24 @@ function WidgetLayout() {
                   </Button>
                 );
               })}
+              <Button
+                disableRipple
+                onClick={() => window.location.assign("https://login.60brands.com/apps")}
+                sx={{
+                  flex: "0 0 auto",
+                  minHeight: 34,
+                  px: 1.4,
+                  borderRadius: 99,
+                  color: theme.accent,
+                  bgcolor: "rgba(255,255,255,.72)",
+                  border: `1px solid ${theme.border}`,
+                  textTransform: "none",
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                }}
+              >
+                All applications
+              </Button>
               <Button
                 disableRipple
                 onClick={handleLogout}
