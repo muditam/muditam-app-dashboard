@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Alert, Box, Checkbox, Dialog, DialogContent, DialogTitle, Divider,
-  FormControlLabel, IconButton, InputAdornment, Skeleton, Stack, TextField, Typography, Button,
+  FormControlLabel, IconButton, InputAdornment, Pagination, Skeleton, Stack, TextField, Typography, Button,
 } from "@mui/material";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
@@ -34,6 +34,7 @@ const EMPTY_FILTERS = {
   healthConcern: "",
   productSlug: "",
 };
+const CONVERSATIONS_PAGE_SIZE = 50;
 
 function activeFilterCount(filters) {
   return (
@@ -502,11 +503,17 @@ function WidgetConversations() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [dateRange, setDateRange] = useState(undefined);
+  const [page, setPage] = useState(1);
+  const [totalConversations, setTotalConversations] = useState(0);
+
+  useEffect(() => { setPage(1); }, [filters, dateRange]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     commerceWidgetApi.getConversations({
+      page,
+      limit: CONVERSATIONS_PAGE_SIZE,
       from: dateRange?.from ? dateRange.from.toISOString() : undefined,
       to: dateRange?.to ? dateRange.to.toISOString() : undefined,
       intent: filters.intents.join(","),
@@ -518,11 +525,16 @@ function WidgetConversations() {
       healthConcern: filters.healthConcern.trim(),
       productSlug: filters.productSlug.trim(),
     })
-      .then((data) => { if (!cancelled) setConversations(data.conversations ?? []); })
+      .then((data) => {
+        if (!cancelled) {
+          setConversations(data.conversations ?? []);
+          setTotalConversations(data.total ?? data.conversations?.length ?? 0);
+        }
+      })
       .catch((err) => { if (!cancelled) setError(err.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [filters, dateRange]);
+  }, [filters, dateRange, page]);
 
   useEffect(() => {
     if (!selectedId) { setDetail(null); return; }
@@ -606,6 +618,21 @@ function WidgetConversations() {
               ? <ConversationListSkeleton />
               : <ConversationList conversations={conversations} selectedId={selectedId} onSelect={setSelectedId} search={search} />}
           </Box>
+          <Stack gap={0.75} alignItems="center" sx={{ pt: 0.75, borderTop: `1px solid ${theme.border}` }}>
+            <Typography sx={{ fontSize: 11.5, color: theme.faint }}>
+              Showing {conversations.length ? ((page - 1) * CONVERSATIONS_PAGE_SIZE) + 1 : 0}
+              -{Math.min(page * CONVERSATIONS_PAGE_SIZE, totalConversations)} of {totalConversations}
+            </Typography>
+            <Pagination
+              page={page}
+              count={Math.max(Math.ceil(totalConversations / CONVERSATIONS_PAGE_SIZE), 1)}
+              size="small"
+              color="primary"
+              onChange={(_, value) => setPage(value)}
+              siblingCount={0}
+              disabled={loading}
+            />
+          </Stack>
         </Box>
 
         <FiltersDialog
