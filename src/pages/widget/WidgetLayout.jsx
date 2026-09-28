@@ -20,6 +20,12 @@ const navItems = [
     subtitle: "Browse and review every AI widget conversation",
   },
   {
+    path: "/widget/leads",
+    label: "Leads",
+    title: "Support Leads",
+    subtitle: "Review callback requests captured from chatbot hand-offs",
+  },
+  {
     path: "/widget/bot-ui",
     label: "Bot UI",
     title: "Bot UI",

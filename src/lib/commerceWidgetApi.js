@@ -75,6 +75,13 @@ export const commerceWidgetApi = {
   getConversation(conversationId) {
     return request(`/api/commerce-widget/conversations/${encodeURIComponent(conversationId)}`);
   },
+  getLeads(params = {}) {
+    const query = new URLSearchParams();
+    if (params.from) query.set('from', params.from);
+    if (params.to) query.set('to', params.to);
+    if (params.limit) query.set('limit', params.limit);
+    return request(`/api/commerce-widget/leads?${query.toString()}`);
+  },
   getWidgetConfig() {
     return request(`/api/commerce-widget/widget-config`);
   },
