@@ -15,8 +15,8 @@ const subTabs = ["Overview", "Sales"];
 
 const kpis = [
   { key: "totalConversations", label: "Total conversations", overviewKey: "totalConversations", icon: ForumRoundedIcon },
-  { key: "assistedOrderValue", label: "Assisted order value", overviewKey: "assistedOrderValue", prefix: "Rs ", icon: PaidRoundedIcon },
-  { key: "orderValueUtm", label: "Order value (UTM)", overviewKey: "orderValueUtm", prefix: "Rs ", icon: TrendingUpRoundedIcon },
+  { key: "assistedOrderValue", label: "Assisted order value", overviewKey: "assistedOrderValue", prefix: "₹", icon: PaidRoundedIcon },
+  { key: "orderValueUtm", label: "Order value (UTM)", overviewKey: "orderValueUtm", prefix: "₹", icon: TrendingUpRoundedIcon },
   { key: "addToCartAssisted", label: "Add to cart assisted", overviewKey: "addToCartAssisted", icon: ShoppingCartRoundedIcon },
   { key: "resolutionRate", label: "Resolution rate", overviewKey: "resolutionRate", suffix: "%", icon: CheckCircleRoundedIcon },
   { key: "leadCaptures", label: "Lead captures", overviewKey: "leadCaptures", icon: MailRoundedIcon },

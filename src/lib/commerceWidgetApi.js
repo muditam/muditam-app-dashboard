@@ -30,7 +30,15 @@ async function request(path, options = {}) {
   const text = await response.text();
   const payload = text ? JSON.parse(text) : null;
   if (!response.ok) {
-    throw new Error(payload?.error || 'Request failed');
+    const details = Array.isArray(payload?.details)
+      ? payload.details
+        .map((issue) => {
+          const path = Array.isArray(issue.path) ? issue.path.join('.') : '';
+          return `${path || 'payload'}: ${issue.message}`;
+        })
+        .join('; ')
+      : '';
+    throw new Error([payload?.error || 'Request failed', details].filter(Boolean).join(' '));
   }
   return payload;
 }

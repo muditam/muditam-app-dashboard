@@ -252,6 +252,8 @@ function BotTest() {
 
 const splitList = (value) => [...new Set(String(value).split(",").map((item) => item.trim()).filter(Boolean))];
 const productFieldKeys = ["concern", "keyBenefits", "quantity", "usage", "warning", "moreInfo", "other", "variantFormats"];
+const validRank = (value) => Number.isInteger(value) && value >= 1 && value <= 999;
+const rankOrNull = (value) => validRank(value) ? value : null;
 
 function normalizeProductForSave(product) {
   return {
@@ -260,8 +262,8 @@ function normalizeProductForSave(product) {
     tags: splitList(product.tagsText == null ? (product.tags || []).join(", ") : product.tagsText),
     aliases: splitList(product.aliasesText == null ? (product.aliases || []).join(", ") : product.aliasesText),
     visible: product.visible !== false,
-    overallRank: product.overallRank ?? null,
-    tagRanks: Object.fromEntries(Object.entries(product.tagRanks || {}).filter(([, rank]) => Number.isInteger(rank) && rank > 0).sort(([a], [b]) => a.localeCompare(b))),
+    overallRank: rankOrNull(product.overallRank),
+    tagRanks: Object.fromEntries(Object.entries(product.tagRanks || {}).filter(([, rank]) => validRank(rank)).sort(([a], [b]) => a.localeCompare(b))),
   };
 }
 
@@ -348,7 +350,7 @@ function DataSource({ onAdd }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [kind]);
   const filtered = useMemo(() => data.filter((item) => `${item.name ?? item.title} ${item.slug ?? item.content}`.toLowerCase().includes(search.toLowerCase())), [data, search]);
-  const saveProduct = async (product, patch = {}) => { setSaving(true); setError(""); try { const visible = patch.visible ?? product.visible ?? product.recommendationPriority !== "hidden"; const payload = { recommendationPriority: visible ? "normal" : "hidden", visible, overallRank: product.overallRank ?? null, tagRanks: Object.fromEntries(Object.entries(product.tagRanks || {}).filter(([, rank]) => Number.isInteger(rank) && rank > 0)), tags: product.tagsText == null ? (product.tags || []) : splitList(product.tagsText), aliases: product.aliasesText == null ? (product.aliases || []) : splitList(product.aliasesText), approvedDescription: product.approvedDescription || "", fields: { concern: "", keyBenefits: "", quantity: "", usage: "", warning: "", moreInfo: "", other: "", variantFormats: "", ...(product.fields || {}) }, ...patch }; const result = await commerceWidgetApi.saveBotProduct(product.slug, payload); setData((items) => items.map((item) => item.slug === product.slug ? result.product : item)); setEditing(null); setNotice(`${product.name} settings saved.`); } catch (e) { setError(e.message); } finally { setSaving(false); } };
+  const saveProduct = async (product, patch = {}) => { setSaving(true); setError(""); try { const visible = patch.visible ?? product.visible ?? product.recommendationPriority !== "hidden"; const payload = { recommendationPriority: visible ? "normal" : "hidden", visible, overallRank: rankOrNull(product.overallRank), tagRanks: Object.fromEntries(Object.entries(product.tagRanks || {}).filter(([, rank]) => validRank(rank))), tags: product.tagsText == null ? (product.tags || []) : splitList(product.tagsText), aliases: product.aliasesText == null ? (product.aliases || []) : splitList(product.aliasesText), approvedDescription: product.approvedDescription || "", fields: { concern: "", keyBenefits: "", quantity: "", usage: "", warning: "", moreInfo: "", other: "", variantFormats: "", ...(product.fields || {}) }, ...patch }; const result = await commerceWidgetApi.saveBotProduct(product.slug, payload); setData((items) => items.map((item) => item.slug === product.slug ? result.product : item)); setEditing(null); setNotice(`${product.name} settings saved.`); } catch (e) { setError(e.message); } finally { setSaving(false); } };
   const saveKnowledge = async () => { setSaving(true); setError(""); try { const result = await commerceWidgetApi.updateBotKnowledge(editing.key, { title: editing.title, content: editing.content }); setData((items) => items.map((item) => item.key === editing.key ? result.source : item)); setEditing(null); setNotice("Knowledge updated and re-indexed."); } catch (e) { setError(e.message); } finally { setSaving(false); } };
   const deleteKnowledge = async (item) => { if (!window.confirm(`Remove “${item.title}” from the bot knowledge base?`)) return; try { await commerceWidgetApi.deleteBotKnowledge(item.key); setData((items) => items.filter((entry) => entry.key !== item.key)); setNotice("Knowledge removed from chatbot answers."); } catch (e) { setError(e.message); } };
   const applyBulk = async () => { setSaving(true); setError(""); try { const result = await commerceWidgetApi.bulkSaveBotProducts({ tags: splitList(bulkTags), recommendationPriority: bulkPriority }); setNotice(`${result.matched} products updated.`); setBulkTags(""); await load(); } catch (e) { setError(e.message); } finally { setSaving(false); } };
