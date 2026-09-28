@@ -62,6 +62,7 @@ export const commerceWidgetApi = {
     if (params.from) query.set('from', params.from);
     if (params.to) query.set('to', params.to);
     if (params.limit) query.set('limit', params.limit);
+    if (params.page) query.set('page', params.page);
     if (params.intent) query.set('intent', params.intent);
     if (params.feedback) query.set('feedback', params.feedback);
     if (params.addedToCart) query.set('addedToCart', 'true');
