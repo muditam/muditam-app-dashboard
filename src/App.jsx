@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import WidgetLayout from "./pages/widget/WidgetLayout";
 import WidgetDashboard from "./pages/widget/WidgetDashboard";
 import WidgetConversations from "./pages/widget/WidgetConversations";
+import WidgetLeads from "./pages/widget/WidgetLeads";
 import WidgetBotUI from "./pages/widget/WidgetBotUI";
 import WidgetBotFlow from "./pages/widget/WidgetBotFlow";
 
@@ -18,6 +19,7 @@ function App() {
           <Route index element={<Navigate to="/widget/dashboard" replace />} />
           <Route path="dashboard" element={<WidgetDashboard />} />
           <Route path="conversations" element={<WidgetConversations />} />
+          <Route path="leads" element={<WidgetLeads />} />
           <Route path="bot-ui" element={<WidgetBotUI />} />
           <Route path="bot-flow" element={<WidgetBotFlow />} />
         </Route>
