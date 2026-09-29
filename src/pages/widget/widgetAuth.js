@@ -5,9 +5,6 @@
 import { commerceWidgetApi } from "../../lib/commerceWidgetApi";
 import { getWidgetToken, setWidgetToken, clearWidgetToken } from "../../lib/widgetSession";
 
-const WIDGET_ADMIN_USERNAME = import.meta.env.VITE_WIDGET_ADMIN_USERNAME || "";
-const WIDGET_ADMIN_PASSWORD = import.meta.env.VITE_WIDGET_ADMIN_PASSWORD || "";
-
 export function isAuthenticated() {
   return Boolean(getWidgetToken());
 }
@@ -19,10 +16,12 @@ export async function login(username, password) {
 
 export async function ensureWidgetSession() {
   if (getWidgetToken()) return;
-  if (!WIDGET_ADMIN_USERNAME || !WIDGET_ADMIN_PASSWORD) {
-    throw new Error("Widget dashboard token credentials are not configured.");
+  const response = await fetch("/api/widget-token", { method: "POST" });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.token) {
+    throw new Error(data.error || "Widget dashboard token is not available.");
   }
-  await login(WIDGET_ADMIN_USERNAME, WIDGET_ADMIN_PASSWORD);
+  setWidgetToken(data.token);
 }
 
 export function logout() {
