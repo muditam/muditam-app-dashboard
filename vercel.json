@@ -5,7 +5,7 @@
       "has": [
         { "type": "host", "value": "muditam-app-dashboard.vercel.app" }
       ],
-      "destination": "https://chat.muditam.com/widget/dashboard",
+      "destination": "https://chat.60brands.com/widget/dashboard",
       "permanent": true
     }
   ],
