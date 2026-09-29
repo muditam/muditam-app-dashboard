@@ -3,8 +3,8 @@ import { Box, Button, Stack, Typography } from "@mui/material";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { theme } from "./theme";
-import WidgetLogin from "./WidgetLogin";
-import { isAuthenticated, logout } from "./widgetAuth";
+import { logout as logoutFromPlatform } from "../../auth";
+import { ensureWidgetSession, logout } from "./widgetAuth";
 
 const navItems = [
   {
@@ -40,28 +40,51 @@ const navItems = [
 ];
 
 const sidebarWidth = 152;
-const LOGIN_URL = "https://login.60brands.com/login";
-
 function WidgetLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const current = navItems.find((item) => location.pathname.startsWith(item.path)) ?? navItems[0];
-  const [authed, setAuthed] = useState(() => isAuthenticated());
+  const [tokenState, setTokenState] = useState("checking");
+  const [tokenError, setTokenError] = useState("");
 
   useEffect(() => {
-    const handleUnauthorized = () => setAuthed(false);
+    ensureWidgetSession()
+      .then(() => setTokenState("ready"))
+      .catch((error) => {
+        setTokenError(error instanceof Error ? error.message : "Could not open widget dashboard.");
+        setTokenState("error");
+      });
+  }, []);
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+      setTokenState("checking");
+      ensureWidgetSession()
+        .then(() => setTokenState("ready"))
+        .catch((error) => {
+          setTokenError(error instanceof Error ? error.message : "Could not open widget dashboard.");
+          setTokenState("error");
+        });
+    };
     window.addEventListener("muditam-widget-unauthorized", handleUnauthorized);
     return () => window.removeEventListener("muditam-widget-unauthorized", handleUnauthorized);
   }, []);
 
-  if (!authed) {
-    return <WidgetLogin onSuccess={() => setAuthed(true)} />;
+  if (tokenState !== "ready") {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", bgcolor: theme.canvas, p: 3 }}>
+        <Box sx={{ width: "min(430px, 100%)", p: 4, border: `1px solid ${theme.border}`, borderRadius: 3, bgcolor: "#fff", textAlign: "center" }}>
+          <Typography sx={{ fontWeight: 850, color: theme.ink }}>{tokenState === "error" ? "Could not open AI dashboard" : "Opening AI dashboard..."}</Typography>
+          {tokenError && <Typography sx={{ mt: 1, color: theme.muted, fontSize: 13 }}>{tokenError}</Typography>}
+        </Box>
+      </Box>
+    );
   }
 
   const handleLogout = () => {
     logout();
-    setAuthed(false);
-    window.location.assign(LOGIN_URL);
+    void logoutFromPlatform();
   };
 
   return (
