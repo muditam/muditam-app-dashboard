@@ -3,10 +3,12 @@ import {
   Box,
   ButtonBase,
   Container,
+  Button,
   Paper,
   Stack,
   Typography,
 } from "@mui/material";
+import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
@@ -18,6 +20,8 @@ import Chats from "./Chats";
 import Bookings from "./Bookings";
 import LiveClasses from "./LiveClasses";
 import ZoomMeetings from "./ZoomMeetings";
+import ApplicationSwitcher from "../ApplicationSwitcher";
+import { logout } from "../auth";
 
 const tabs = [
   { id: "chats", label: "Chats", icon: ChatBubbleRoundedIcon },
@@ -29,7 +33,7 @@ const tabs = [
 
 const availableTabIds = new Set(tabs.map((tab) => tab.id));
 
-function Dashboard() {
+function Dashboard({ user }) {
   const [activeTab, setActiveTab] = useState(() => {
     const storedTab = localStorage.getItem("dashboardActiveTabV2");
     return availableTabIds.has(storedTab) ? storedTab : "chats";
@@ -92,49 +96,53 @@ function Dashboard() {
               </Box>
             </Stack>
 
-            <Paper
-              elevation={0}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.5,
-                p: 0.5,
-                borderRadius: 2,
-                border: "1px solid rgba(16, 24, 40, 0.08)",
-                bgcolor: "#fff",
-                overflowX: "auto",
-              }}
-            >
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const selected = activeTab === tab.id;
-                return (
-                  <ButtonBase
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    sx={{
-                      minHeight: 40,
-                      px: 1.5,
-                      borderRadius: 1.5,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 0.75,
-                      whiteSpace: "nowrap",
-                      color: selected ? "#fff" : "#475467",
-                      bgcolor: selected ? "#182230" : "transparent",
-                      fontWeight: 850,
-                      fontSize: 14,
-                      "&:hover": {
-                        bgcolor: selected ? "#182230" : "#f2f4f7",
-                      },
-                    }}
-                  >
-                    <Icon sx={{ fontSize: 18 }} />
-                    {tab.label}
-                  </ButtonBase>
-                );
-              })}
-            </Paper>
+            <Stack direction="row" alignItems="center" gap={1} sx={{ minWidth: 0 }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  p: 0.5,
+                  borderRadius: 2,
+                  border: "1px solid rgba(16, 24, 40, 0.08)",
+                  bgcolor: "#fff",
+                  overflowX: "auto",
+                }}
+              >
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const selected = activeTab === tab.id;
+                  return (
+                    <ButtonBase
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      sx={{
+                        minHeight: 40,
+                        px: 1.5,
+                        borderRadius: 1.5,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 0.75,
+                        whiteSpace: "nowrap",
+                        color: selected ? "#fff" : "#475467",
+                        bgcolor: selected ? "#182230" : "transparent",
+                        fontWeight: 850,
+                        fontSize: 14,
+                        "&:hover": {
+                          bgcolor: selected ? "#182230" : "#f2f4f7",
+                        },
+                      }}
+                    >
+                      <Icon sx={{ fontSize: 18 }} />
+                      {tab.label}
+                    </ButtonBase>
+                  );
+                })}
+              </Paper>
+              <ApplicationSwitcher user={user} trigger={({ open }) => <Button variant="outlined" onClick={open} sx={{ minHeight: 40, borderRadius: 2, textTransform: "none", fontWeight: 800, whiteSpace: "nowrap" }}>All applications</Button>} />
+              <Button variant="outlined" onClick={() => void logout()} startIcon={<LogoutRoundedIcon />} sx={{ minHeight: 40, borderRadius: 2, textTransform: "none", fontWeight: 750, whiteSpace: "nowrap" }}>Logout</Button>
+            </Stack>
           </Stack>
         </Container>
       </Box>

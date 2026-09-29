@@ -13,11 +13,11 @@ import AuthGate from "./AuthGate";
 
 function App() {
   return (
-    <AuthGate>
+    <AuthGate>{(user) => (
       <Router>
         <Routes>
           <Route path="/users" element={<Users />} />
-          <Route path="/widget" element={<WidgetLayout />}>
+          <Route path="/widget" element={<WidgetLayout user={user} />}>
             <Route index element={<Navigate to="/widget/dashboard" replace />} />
             <Route path="dashboard" element={<WidgetDashboard />} />
             <Route path="conversations" element={<WidgetConversations />} />
@@ -25,10 +25,10 @@ function App() {
             <Route path="bot-ui" element={<WidgetBotUI />} />
             <Route path="bot-flow" element={<WidgetBotFlow />} />
           </Route>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<Dashboard user={user} />} />
         </Routes>
       </Router>
-    </AuthGate>
+    )}</AuthGate>
   );
 }
 

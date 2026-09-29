@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Box, Button, Stack, Typography } from "@mui/material";
+import AppsRoundedIcon from "@mui/icons-material/AppsRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { theme } from "./theme";
+import ApplicationSwitcher from "../../ApplicationSwitcher";
 import { logout as logoutFromPlatform } from "../../auth";
 import { ensureWidgetSession, logout } from "./widgetAuth";
 
@@ -40,7 +42,7 @@ const navItems = [
 ];
 
 const sidebarWidth = 152;
-function WidgetLayout() {
+function WidgetLayout({ user }) {
   const location = useLocation();
   const navigate = useNavigate();
   const current = navItems.find((item) => location.pathname.startsWith(item.path)) ?? navItems[0];
@@ -155,38 +157,25 @@ function WidgetLayout() {
           })}
         </Stack>
         <Box sx={{ flex: 1 }} />
-        <Button
-          disableRipple
-          onClick={() => window.location.assign("https://login.60brands.com/apps")}
-          sx={{
-            justifyContent: "flex-start",
-            minHeight: 32,
-            px: 0.9,
-            mb: 0.35,
-            borderRadius: `${theme.radiusSmall}px`,
-            color: theme.accent,
-            textTransform: "none",
-            fontSize: 11.5,
-            fontWeight: 700,
-            "&:hover": { bgcolor: theme.accentSoft },
-          }}
-        >
-          All applications
-        </Button>
+        <ApplicationSwitcher user={user} trigger={({ open }) => <Button disableRipple onClick={open} startIcon={<AppsRoundedIcon sx={{ fontSize: 16 }} />} sx={{ justifyContent: "flex-start", minHeight: 34, width: "100%", px: 0.9, mb: 0.45, borderRadius: `${theme.radiusSmall}px`, border: `1px solid ${theme.border}`, bgcolor: "#fff", color: theme.accent, textTransform: "none", fontSize: 11.5, fontWeight: 760, "& .MuiButton-startIcon": { mr: 0.75 }, "&:hover": { borderColor: "#d8c8e4", bgcolor: theme.accentSoft } }}>All applications</Button>} />
         <Button
           disableRipple
           onClick={handleLogout}
           startIcon={<LogoutRoundedIcon sx={{ fontSize: 18 }} />}
           sx={{
             justifyContent: "flex-start",
-            minHeight: 32,
+            minHeight: 34,
+            width: "100%",
             px: 0.9,
             borderRadius: `${theme.radiusSmall}px`,
+            border: `1px solid ${theme.border}`,
+            bgcolor: "#fff",
             color: theme.muted,
             textTransform: "none",
-            fontSize: 12,
-            fontWeight: 600,
-            "&:hover": { bgcolor: theme.canvas },
+            fontSize: 11.5,
+            fontWeight: 720,
+            "& .MuiButton-startIcon": { mr: 0.75 },
+            "&:hover": { bgcolor: theme.canvas, borderColor: "#ded8e4", color: theme.ink },
           }}
         >
           Log out
@@ -244,24 +233,7 @@ function WidgetLayout() {
                   </Button>
                 );
               })}
-              <Button
-                disableRipple
-                onClick={() => window.location.assign("https://login.60brands.com/apps")}
-                sx={{
-                  flex: "0 0 auto",
-                  minHeight: 34,
-                  px: 1.4,
-                  borderRadius: 99,
-                  color: theme.accent,
-                  bgcolor: "rgba(255,255,255,.72)",
-                  border: `1px solid ${theme.border}`,
-                  textTransform: "none",
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                }}
-              >
-                All applications
-              </Button>
+              <ApplicationSwitcher user={user} trigger={({ open }) => <Button disableRipple onClick={open} sx={{ flex: "0 0 auto", minHeight: 34, px: 1.4, borderRadius: 99, color: theme.accent, bgcolor: "rgba(255,255,255,.72)", border: `1px solid ${theme.border}`, textTransform: "none", fontSize: 12.5, fontWeight: 700 }}>All applications</Button>} />
               <Button
                 disableRipple
                 onClick={handleLogout}
