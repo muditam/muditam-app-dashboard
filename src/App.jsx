@@ -9,23 +9,26 @@ import WidgetConversations from "./pages/widget/WidgetConversations";
 import WidgetLeads from "./pages/widget/WidgetLeads";
 import WidgetBotUI from "./pages/widget/WidgetBotUI";
 import WidgetBotFlow from "./pages/widget/WidgetBotFlow";
+import AuthGate from "./AuthGate";
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/users" element={<Users />} />
-        <Route path="/widget" element={<WidgetLayout />}>
-          <Route index element={<Navigate to="/widget/dashboard" replace />} />
-          <Route path="dashboard" element={<WidgetDashboard />} />
-          <Route path="conversations" element={<WidgetConversations />} />
-          <Route path="leads" element={<WidgetLeads />} />
-          <Route path="bot-ui" element={<WidgetBotUI />} />
-          <Route path="bot-flow" element={<WidgetBotFlow />} />
-        </Route>
-        <Route path="/" element={<Dashboard />} />
-      </Routes>
-    </Router>
+    <AuthGate>
+      <Router>
+        <Routes>
+          <Route path="/users" element={<Users />} />
+          <Route path="/widget" element={<WidgetLayout />}>
+            <Route index element={<Navigate to="/widget/dashboard" replace />} />
+            <Route path="dashboard" element={<WidgetDashboard />} />
+            <Route path="conversations" element={<WidgetConversations />} />
+            <Route path="leads" element={<WidgetLeads />} />
+            <Route path="bot-ui" element={<WidgetBotUI />} />
+            <Route path="bot-flow" element={<WidgetBotFlow />} />
+          </Route>
+          <Route path="/" element={<Dashboard />} />
+        </Routes>
+      </Router>
+    </AuthGate>
   );
 }
 

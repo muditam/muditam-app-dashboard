@@ -1,4 +1,14 @@
 {
+  "redirects": [
+    {
+      "source": "/widget/dashboard",
+      "has": [
+        { "type": "host", "value": "muditam-app-dashboard.vercel.app" }
+      ],
+      "destination": "https://chat.muditam.com/widget/dashboard",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
