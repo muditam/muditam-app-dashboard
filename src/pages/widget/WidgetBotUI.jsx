@@ -424,23 +424,45 @@ function WidgetBotUI() {
 
             <Stack direction="row" gap={3}>
               <Box sx={{ flex: 1 }}>
-                <FieldLabel>Gap from Side (px)</FieldLabel>
+                <FieldLabel>Gap from Side Desktop (px)</FieldLabel>
                 <TextField
                   size="small"
                   type="number"
                   fullWidth
-                  value={config.gapFromSide}
-                  onChange={(event) => updateField("gapFromSide", Number(event.target.value))}
+                  value={config.gapFromSideDesktop ?? config.gapFromSide}
+                  onChange={(event) => updateField("gapFromSideDesktop", Number(event.target.value))}
                 />
               </Box>
               <Box sx={{ flex: 1 }}>
-                <FieldLabel>Gap from Bottom (px)</FieldLabel>
+                <FieldLabel>Gap from Bottom Desktop (px)</FieldLabel>
                 <TextField
                   size="small"
                   type="number"
                   fullWidth
-                  value={config.gapFromBottom}
-                  onChange={(event) => updateField("gapFromBottom", Number(event.target.value))}
+                  value={config.gapFromBottomDesktop ?? config.gapFromBottom}
+                  onChange={(event) => updateField("gapFromBottomDesktop", Number(event.target.value))}
+                />
+              </Box>
+            </Stack>
+            <Stack direction="row" gap={3}>
+              <Box sx={{ flex: 1 }}>
+                <FieldLabel>Gap from Side Mobile (px)</FieldLabel>
+                <TextField
+                  size="small"
+                  type="number"
+                  fullWidth
+                  value={config.gapFromSideMobile ?? config.gapFromSide}
+                  onChange={(event) => updateField("gapFromSideMobile", Number(event.target.value))}
+                />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <FieldLabel>Gap from Bottom Mobile (px)</FieldLabel>
+                <TextField
+                  size="small"
+                  type="number"
+                  fullWidth
+                  value={config.gapFromBottomMobile ?? config.gapFromBottom}
+                  onChange={(event) => updateField("gapFromBottomMobile", Number(event.target.value))}
                 />
               </Box>
             </Stack>
