@@ -12,22 +12,13 @@ import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
-import AssignmentRoundedIcon from "@mui/icons-material/AssignmentRounded";
-import VideoCameraFrontRoundedIcon from "@mui/icons-material/VideoCameraFrontRounded";
-import VideoCallRoundedIcon from "@mui/icons-material/VideoCallRounded";
 import Push from "./Push";
 import Chats from "./Chats";
-import Bookings from "./Bookings";
-import LiveClasses from "./LiveClasses";
-import ZoomMeetings from "./ZoomMeetings";
 import ApplicationSwitcher from "../ApplicationSwitcher";
 import { logout } from "../auth";
 
 const tabs = [
   { id: "chats", label: "Chats", icon: ChatBubbleRoundedIcon },
-  { id: "bookings", label: "Bookings", icon: AssignmentRoundedIcon },
-  { id: "classes", label: "Live Classes", icon: VideoCameraFrontRoundedIcon },
-  { id: "zoomMeetings", label: "Zoom Meetings", icon: VideoCallRoundedIcon },
   { id: "push", label: "Push", icon: CampaignRoundedIcon },
 ];
 
@@ -149,9 +140,6 @@ function Dashboard({ user }) {
 
       <Box component="main" sx={{ px: { xs: 1.5, md: 3 }, py: { xs: 2, md: 2.5 } }}>
         {activeTab === "chats" && <Chats />}
-        {activeTab === "bookings" && <Bookings />}
-        {activeTab === "classes" && <LiveClasses />}
-        {activeTab === "zoomMeetings" && <ZoomMeetings />}
         {activeTab === "push" && <Push />}
       </Box>
     </Box>
