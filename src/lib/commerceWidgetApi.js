@@ -1,6 +1,8 @@
 import { getWidgetToken, clearWidgetToken } from "./widgetSession";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://muditam-app-backend-ca1c8b03db09.herokuapp.com';
+const API_BASE = import.meta.env.DEV
+  ? '/widget-api'
+  : (import.meta.env.VITE_API_BASE_URL || 'https://muditam-app-backend-ca1c8b03db09.herokuapp.com').replace(/\/$/, '');
 
 async function request(path, options = {}) {
   const token = getWidgetToken();

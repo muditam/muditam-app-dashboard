@@ -3,6 +3,7 @@ import { Alert, Box, Button, Chip, CircularProgress, Link, Paper, Stack, Table, 
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import { commerceWidgetApi } from "../../lib/commerceWidgetApi";
 import { DateRangeFilter } from "./DateRangeFilter";
+import { widgetDateRangeParams } from "../../lib/widgetDateRange";
 import { theme } from "./theme";
 
 function formatDate(value) {
@@ -20,8 +21,7 @@ function WidgetLeads() {
     setLoading(true);
     setError("");
     commerceWidgetApi.getLeads({
-      from: dateRange?.from ? dateRange.from.toISOString() : undefined,
-      to: dateRange?.to ? dateRange.to.toISOString() : undefined,
+      ...widgetDateRangeParams(dateRange),
       limit: 200,
     })
       .then((data) => setLeads(data.leads || []))
@@ -35,7 +35,7 @@ function WidgetLeads() {
     <Box>
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="flex-end" gap={2} sx={{ mb: 2.5 }}>
         <Stack direction="row" gap={1} alignItems="center">
-          <DateRangeFilter value={dateRange} onChange={setDateRange} />
+          <DateRangeFilter range={dateRange} onChange={setDateRange} />
           <Button startIcon={<RefreshRoundedIcon />} variant="outlined" onClick={load} sx={{ textTransform: "none", borderRadius: 2 }}>
             Refresh
           </Button>

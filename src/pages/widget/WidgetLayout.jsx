@@ -7,6 +7,7 @@ import { theme } from "./theme";
 import ApplicationSwitcher from "../../ApplicationSwitcher";
 import { logout as logoutFromPlatform } from "../../auth";
 import { ensureWidgetSession, logout } from "./widgetAuth";
+import WidgetLogin from "./WidgetLogin";
 
 const navItems = [
   {
@@ -54,7 +55,7 @@ function WidgetLayout({ user }) {
       .then(() => setTokenState("ready"))
       .catch((error) => {
         setTokenError(error instanceof Error ? error.message : "Could not open widget dashboard.");
-        setTokenState("error");
+        setTokenState(error?.code === "WIDGET_LOGIN_REQUIRED" ? "login" : "error");
       });
   }, []);
 
@@ -66,12 +67,19 @@ function WidgetLayout({ user }) {
         .then(() => setTokenState("ready"))
         .catch((error) => {
           setTokenError(error instanceof Error ? error.message : "Could not open widget dashboard.");
-          setTokenState("error");
+          setTokenState(error?.code === "WIDGET_LOGIN_REQUIRED" ? "login" : "error");
         });
     };
     window.addEventListener("muditam-widget-unauthorized", handleUnauthorized);
     return () => window.removeEventListener("muditam-widget-unauthorized", handleUnauthorized);
   }, []);
+
+  if (tokenState === "login") {
+    return <WidgetLogin onSuccess={() => {
+      setTokenError("");
+      setTokenState("ready");
+    }} />;
+  }
 
   if (tokenState !== "ready") {
     return (

@@ -16,12 +16,7 @@ export async function login(username, password) {
 
 export async function ensureWidgetSession() {
   if (getWidgetToken()) return;
-  const response = await fetch("/api/widget-token", { method: "POST" });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data.token) {
-    throw new Error(data.error || "Widget dashboard token is not available.");
-  }
-  setWidgetToken(data.token);
+  throw Object.assign(new Error("Sign in to the widget dashboard."), { code: "WIDGET_LOGIN_REQUIRED" });
 }
 
 export function logout() {

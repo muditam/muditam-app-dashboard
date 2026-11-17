@@ -14,6 +14,7 @@ export function formatDate(date) {
 
 export function DateRangeFilter({ range, onChange }) {
   const [anchorEl, setAnchorEl] = useState(null);
+  const [draftRange, setDraftRange] = useState(range);
   const label = range?.from && range?.to
     ? `${formatDate(range.from)} - ${formatDate(range.to)}`
     : "Select date range";
@@ -21,16 +22,19 @@ export function DateRangeFilter({ range, onChange }) {
   return (
     <>
       <Box
-        onClick={(event) => setAnchorEl(event.currentTarget)}
+        onClick={(event) => {
+          setDraftRange(range);
+          setAnchorEl(event.currentTarget);
+        }}
         sx={{
           display: "flex", alignItems: "center", gap: 1,
-          border: `1px solid ${theme.border}`, borderRadius: `${theme.radiusSmall}px`,
+          border: "1px solid #000", borderRadius: `${theme.radiusSmall}px`,
           px: 1.5, py: 1.15, cursor: "pointer",
-          "&:hover": { borderColor: theme.borderStrong },
+          "&:hover": { borderColor: "#000" },
         }}
       >
-        <CalendarTodayRoundedIcon sx={{ fontSize: 15, color: theme.muted }} />
-        <Typography sx={{ fontSize: 13, color: range?.from ? theme.ink : theme.faint }}>
+        <CalendarTodayRoundedIcon sx={{ fontSize: 15, color: "#000" }} />
+        <Typography sx={{ fontSize: 13, color: "#000" }}>
           {label}
         </Typography>
       </Box>
@@ -51,18 +55,22 @@ export function DateRangeFilter({ range, onChange }) {
         >
           <DayPicker
             mode="range"
-            selected={range}
-            onSelect={onChange}
+            selected={draftRange}
+            onSelect={setDraftRange}
             defaultMonth={range?.to}
           />
           <Stack direction="row" justifyContent="space-between" sx={{ px: 1, pb: 0.5 }}>
-            <Button size="small" sx={{ textTransform: "none", color: theme.muted }} onClick={() => onChange(undefined)}>
+            <Button size="small" sx={{ textTransform: "none", color: theme.muted }} onClick={() => setDraftRange(undefined)}>
               Clear
             </Button>
             <Button
               size="small" variant="contained" disableElevation
+              disabled={Boolean(draftRange?.from && !draftRange?.to)}
               sx={{ textTransform: "none", bgcolor: theme.accent, "&:hover": { bgcolor: theme.accent } }}
-              onClick={() => setAnchorEl(null)}
+              onClick={() => {
+                onChange(draftRange);
+                setAnchorEl(null);
+              }}
             >
               Done
             </Button>

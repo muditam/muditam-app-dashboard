@@ -9,6 +9,7 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { commerceWidgetApi } from "../../lib/commerceWidgetApi";
 import { loadProductDisplayData, renderStars } from "../../lib/productDisplayData";
 import { DateRangeFilter } from "./DateRangeFilter";
+import { widgetDateRangeParams } from "../../lib/widgetDateRange";
 import { theme } from "./theme";
 
 const WHATSAPP_ICON_PATH = "M12.031 0h-.062C5.406 0 0 5.406 0 12.031c0 2.578.836 4.964 2.256 6.906L.79 23.156l4.32-1.386c1.867 1.24 4.096 1.964 6.907 1.964h.014c6.61 0 12.03-5.406 12.03-12.032a11.94 11.94 0 0 0-3.522-8.487A11.943 11.943 0 0 0 12.03 0zm7.032 17.05c-.297.836-1.72 1.612-2.375 1.71-.607.09-1.377.129-2.222-.14-1.037-.328-2.37-.735-4.09-1.816-3.02-1.887-4.987-4.987-5.144-5.216-.157-.228-1.294-1.72-1.294-3.286 0-1.564.822-2.335 1.113-2.657.297-.322.647-.402.863-.402.216 0 .432.002.62.011.198.01.463-.075.727.554.272.647.925 2.235 1.006 2.398.08.16.132.35.026.564-.107.213-.16.346-.318.532-.157.187-.332.418-.474.56-.157.157-.32.328-.137.643.183.315.815 1.343 1.75 2.176 1.202 1.07 2.216 1.404 2.531 1.564.315.16.5.132.685-.08.187-.213.792-.926 1.006-1.245.213-.318.427-.264.72-.16.294.107 1.86.877 2.178 1.037.318.16.53.24.61.372.08.132.08.766-.217 1.602z";
@@ -514,8 +515,7 @@ function WidgetConversations() {
     commerceWidgetApi.getConversations({
       page,
       limit: CONVERSATIONS_PAGE_SIZE,
-      from: dateRange?.from ? dateRange.from.toISOString() : undefined,
-      to: dateRange?.to ? dateRange.to.toISOString() : undefined,
+      ...widgetDateRangeParams(dateRange),
       intent: filters.intents.join(","),
       feedback: filters.feedback.join(","),
       addedToCart: filters.addedToCart,

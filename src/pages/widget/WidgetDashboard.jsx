@@ -9,6 +9,7 @@ import MailRoundedIcon from "@mui/icons-material/MailRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import { commerceWidgetApi } from "../../lib/commerceWidgetApi";
 import { DateRangeFilter } from "./DateRangeFilter";
+import { widgetDateRangeParams } from "../../lib/widgetDateRange";
 import { theme } from "./theme";
 
 const subTabs = ["Overview", "Sales"];
@@ -216,8 +217,7 @@ function WidgetDashboard() {
     let cancelled = false;
     setLoading(true);
     commerceWidgetApi.getOverview({
-      from: dateRange?.from ? dateRange.from.toISOString() : undefined,
-      to: dateRange?.to ? dateRange.to.toISOString() : undefined,
+      ...widgetDateRangeParams(dateRange),
     })
       .then((data) => { if (!cancelled) setOverview(data); })
       .catch((err) => { if (!cancelled) setError(err.message); })
