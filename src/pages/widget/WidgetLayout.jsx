@@ -7,7 +7,6 @@ import { theme } from "./theme";
 import ApplicationSwitcher from "../../ApplicationSwitcher";
 import { logout as logoutFromPlatform } from "../../auth";
 import { ensureWidgetSession, logout } from "./widgetAuth";
-import WidgetLogin from "./WidgetLogin";
 
 const navItems = [
   {
@@ -51,35 +50,16 @@ function WidgetLayout({ user }) {
   const [tokenError, setTokenError] = useState("");
 
   useEffect(() => {
+    let mounted = true;
     ensureWidgetSession()
-      .then(() => setTokenState("ready"))
+      .then(() => { if (mounted) setTokenState("ready"); })
       .catch((error) => {
+        if (!mounted) return;
         setTokenError(error instanceof Error ? error.message : "Could not open widget dashboard.");
-        setTokenState(error?.code === "WIDGET_LOGIN_REQUIRED" ? "login" : "error");
+        setTokenState("error");
       });
+    return () => { mounted = false; };
   }, []);
-
-  useEffect(() => {
-    const handleUnauthorized = () => {
-      logout();
-      setTokenState("checking");
-      ensureWidgetSession()
-        .then(() => setTokenState("ready"))
-        .catch((error) => {
-          setTokenError(error instanceof Error ? error.message : "Could not open widget dashboard.");
-          setTokenState(error?.code === "WIDGET_LOGIN_REQUIRED" ? "login" : "error");
-        });
-    };
-    window.addEventListener("muditam-widget-unauthorized", handleUnauthorized);
-    return () => window.removeEventListener("muditam-widget-unauthorized", handleUnauthorized);
-  }, []);
-
-  if (tokenState === "login") {
-    return <WidgetLogin onSuccess={() => {
-      setTokenError("");
-      setTokenState("ready");
-    }} />;
-  }
 
   if (tokenState !== "ready") {
     return (
@@ -87,6 +67,7 @@ function WidgetLayout({ user }) {
         <Box sx={{ width: "min(430px, 100%)", p: 4, border: `1px solid ${theme.border}`, borderRadius: 3, bgcolor: "#fff", textAlign: "center" }}>
           <Typography sx={{ fontWeight: 850, color: theme.ink }}>{tokenState === "error" ? "Could not open AI dashboard" : "Opening AI dashboard..."}</Typography>
           {tokenError && <Typography sx={{ mt: 1, color: theme.muted, fontSize: 13 }}>{tokenError}</Typography>}
+          {tokenState === "error" && <Button onClick={() => window.location.reload()}>Try again</Button>}
         </Box>
       </Box>
     );

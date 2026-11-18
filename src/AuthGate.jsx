@@ -1,29 +1,40 @@
 import React, { useEffect, useState } from "react";
-import { Box, Paper, Typography } from "@mui/material";
-import { getSession, hasDashboardAccess, redirectToLogin } from "./auth";
+import { Box, Button, Paper, Typography } from "@mui/material";
+import { getSession, hasDashboardAccess, invalidateDashboardToken } from "./auth";
+import WidgetLogin from "./pages/widget/WidgetLogin";
 
 export default function AuthGate({ children }) {
   const [state, setState] = useState({ status: "checking", user: null });
 
+  const acceptUser = (user) => {
+    setState({ status: !user ? "login" : hasDashboardAccess(user) ? "allowed" : "forbidden", user });
+  };
+
   useEffect(() => {
     let mounted = true;
-    getSession()
-      .then((user) => {
-        if (!mounted) return;
-        if (!user) {
-          setState({ status: "redirecting", user: null });
-          redirectToLogin();
-          return;
-        }
-        setState({ status: hasDashboardAccess(user) ? "allowed" : "forbidden", user });
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setState({ status: "redirecting", user: null });
-        redirectToLogin();
+    const check = () => {
+      invalidateDashboardToken();
+      setState({ status: "checking", user: null });
+      getSession().then((user) => {
+        if (mounted) acceptUser(user);
+      }).catch(() => {
+        if (mounted) setState({ status: "error", user: null });
       });
-    return () => { mounted = false; };
+    };
+    check();
+    window.addEventListener("muditam-widget-unauthorized", check);
+    return () => {
+      mounted = false;
+      window.removeEventListener("muditam-widget-unauthorized", check);
+    };
   }, []);
+
+  if (state.status === "login") return <WidgetLogin onSuccess={acceptUser} />;
+  if (state.status === "error") return (
+    <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+      <Box>Could not check your session. <Button onClick={() => window.location.reload()}>Try again</Button></Box>
+    </Box>
+  );
 
   if (state.status === "allowed") return typeof children === "function" ? children(state.user) : children;
 

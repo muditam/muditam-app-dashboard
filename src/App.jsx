@@ -2,7 +2,6 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Users from "./pages/Users";
-import Dashboard from "./pages/Dashboard";
 import WidgetLayout from "./pages/widget/WidgetLayout";
 import WidgetDashboard from "./pages/widget/WidgetDashboard";
 import WidgetConversations from "./pages/widget/WidgetConversations";
@@ -13,11 +12,10 @@ import AuthGate from "./AuthGate";
 
 function App() {
   return (
-    <AuthGate>{(user) => (
       <Router>
         <Routes>
-          <Route path="/users" element={<Users />} />
-          <Route path="/widget" element={<WidgetLayout user={user} />}>
+          <Route path="/users" element={<AuthGate><Users /></AuthGate>} />
+          <Route path="/widget" element={<AuthGate>{(user) => <WidgetLayout user={user} />}</AuthGate>}>
             <Route index element={<Navigate to="/widget/dashboard" replace />} />
             <Route path="dashboard" element={<WidgetDashboard />} />
             <Route path="conversations" element={<WidgetConversations />} />
@@ -25,10 +23,9 @@ function App() {
             <Route path="bot-ui" element={<WidgetBotUI />} />
             <Route path="bot-flow" element={<WidgetBotFlow />} />
           </Route>
-          <Route path="/" element={<Dashboard user={user} />} />
+          <Route path="/" element={<Navigate to="/widget/dashboard" replace />} />
         </Routes>
       </Router>
-    )}</AuthGate>
   );
 }
 

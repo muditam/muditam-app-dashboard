@@ -7,6 +7,7 @@ import ShoppingCartRoundedIcon from "@mui/icons-material/ShoppingCartRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import MailRoundedIcon from "@mui/icons-material/MailRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import TouchAppRoundedIcon from "@mui/icons-material/TouchAppRounded";
 import { commerceWidgetApi } from "../../lib/commerceWidgetApi";
 import { DateRangeFilter } from "./DateRangeFilter";
 import { widgetDateRangeParams } from "../../lib/widgetDateRange";
@@ -22,6 +23,7 @@ const kpis = [
   { key: "resolutionRate", label: "Resolution rate", overviewKey: "resolutionRate", suffix: "%", icon: CheckCircleRoundedIcon },
   { key: "leadCaptures", label: "Lead captures", overviewKey: "leadCaptures", icon: MailRoundedIcon },
   { key: "interactionRate", label: "Interaction rate", overviewKey: "interactionRate", suffix: "%", icon: GroupsRoundedIcon },
+  { key: "contactClicks", label: "Contact clicks", overviewKey: "contactClicks", icon: TouchAppRoundedIcon },
 ];
 
 function SectionLabel({ children }) {
@@ -32,7 +34,8 @@ function SectionLabel({ children }) {
   );
 }
 
-function KpiCard({ label, value, prefix, suffix, icon: Icon }) {
+function KpiCard({ label, value, prefix, suffix, icon }) {
+  const Icon = icon;
   const available = value !== undefined && value !== null;
   return (
     <Box

@@ -1,11 +1,11 @@
-import { getWidgetToken, clearWidgetToken } from "./widgetSession";
+import { getDashboardToken, invalidateDashboardToken } from "../auth";
 
 const API_BASE = import.meta.env.DEV
   ? '/widget-api'
   : (import.meta.env.VITE_API_BASE_URL || 'https://muditam-app-backend-ca1c8b03db09.herokuapp.com').replace(/\/$/, '');
 
 async function request(path, options = {}) {
-  const token = getWidgetToken();
+  const token = await getDashboardToken();
   const requestOptions = {
     ...options,
     headers: {
@@ -26,8 +26,17 @@ async function request(path, options = {}) {
   }
   if (!response) throw new Error('Could not connect to the server');
   if (response.status === 401) {
-    clearWidgetToken();
-    window.dispatchEvent(new Event("muditam-widget-unauthorized"));
+    // Refresh once. A missing/revoked platform session is handled by AuthGate.
+    invalidateDashboardToken(token);
+    const freshToken = await getDashboardToken();
+    response = await fetch(`${API_BASE}${path}`, {
+      ...requestOptions,
+      headers: { ...requestOptions.headers, Authorization: `Bearer ${freshToken}` },
+    });
+    if (response.status === 401) {
+      invalidateDashboardToken(freshToken);
+      throw new Error('Chat authentication was rejected. Please try again or contact your administrator.');
+    }
   }
   const text = await response.text();
   const payload = text ? JSON.parse(text) : null;
@@ -46,13 +55,6 @@ async function request(path, options = {}) {
 }
 
 export const commerceWidgetApi = {
-  login(username, password) {
-    return request(`/api/commerce-widget/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
-  },
   getOverview(params = {}) {
     const query = new URLSearchParams();
     if (params.from) query.set('from', params.from);

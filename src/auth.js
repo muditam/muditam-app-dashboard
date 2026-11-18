@@ -1,3 +1,4 @@
+import { createPlatformTokenCache } from "./lib/platformTokenCache";
 const DEFAULT_SHIPTRACK_API_URL = ['localhost', '127.0.0.1'].includes(window.location.hostname) ? '/shiptrack-api' : 'https://shiptrack-api.60brands.com';
 const SHIPTRACK_API_URL = (import.meta.env.VITE_SHIPTRACK_API_URL || DEFAULT_SHIPTRACK_API_URL).replace(/\/$/, '');
 const DEFAULT_LOGIN_URL = window.location.hostname.endsWith('60brands.com') ? 'https://login.60brands.com/login' : 'http://localhost:3000/login';
@@ -8,7 +9,7 @@ const FINANCE_URL = (import.meta.env.VITE_FINANCE_URL || new URL('/finance', LOG
 const SALES_URL = (import.meta.env.VITE_SALES_URL || (window.location.hostname.endsWith('60brands.com') ? 'https://sales.60brands.com' : new URL('/sales', LOGIN_URL).toString())).replace(/\/$/, '');
 const HR_INCENTIVES_URL = (import.meta.env.VITE_HR_INCENTIVES_URL || new URL('/hr-incentives', LOGIN_URL).toString()).replace(/\/$/, '');
 const APP_DASHBOARD_URL = (import.meta.env.VITE_APP_DASHBOARD_URL || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://localhost:5173' : 'https://app.60brands.com')).replace(/\/$/, '');
-const CHAT_DASHBOARD_URL = (import.meta.env.VITE_CHAT_DASHBOARD_URL || 'https://chat.60brands.com/widget/dashboard').replace(/\/$/, '');
+const CHAT_DASHBOARD_URL = (import.meta.env.VITE_CHAT_DASHBOARD_URL || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? `${window.location.origin}/widget/dashboard` : 'https://chat.60brands.com/widget/dashboard')).replace(/\/$/, '');
 const ADMIN_ACCESS_URL = (import.meta.env.VITE_ADMIN_ACCESS_URL || new URL('/admin-access', LOGIN_URL).toString()).replace(/\/$/, '');
 const REQUIRED_APPLICATION = 'chat-dashboard';
 
@@ -39,7 +40,8 @@ export async function getSession() {
     cache: 'no-store',
   });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) return null;
+  if (response.status === 401) return null;
+  if (!response.ok) throw new Error("Could not check your session. Please try again.");
   return body.user || null;
 }
 
@@ -58,9 +60,42 @@ export function redirectToPlainLogin() {
 }
 
 export async function logout() {
+  invalidateDashboardToken();
   await fetch(`${SHIPTRACK_API_URL}/api/auth/logout`, {
     method: 'POST',
     credentials: 'include',
   }).catch(() => undefined);
-  redirectToPlainLogin();
+  window.location.replace("/widget/dashboard");
+}
+
+export async function login(username, password) {
+  const response = await fetch(`${SHIPTRACK_API_URL}/api/auth/login`, {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || !body.user) throw new Error(body.error || 'Could not sign in. Please try again.');
+  invalidateDashboardToken();
+  return body.user;
+}
+
+const dashboardTokens = createPlatformTokenCache(async () => {
+  const response = await fetch(`${SHIPTRACK_API_URL}/api/auth/chat-dashboard-token`, {
+    method: 'POST', credentials: 'include', cache: 'no-store',
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      window.dispatchEvent(new Event('muditam-widget-unauthorized'));
+    }
+    throw new Error(body.error || 'Could not open Chat Dashboard. Please try again.');
+  }
+  return body;
+});
+
+export const getDashboardToken = () => dashboardTokens.get();
+export function invalidateDashboardToken(expectedToken) {
+  dashboardTokens.clear(expectedToken);
+  localStorage.removeItem('muditam_widget_token');
 }

@@ -3,7 +3,7 @@ import { Box, Stack, Typography, TextField, Button, IconButton, InputAdornment }
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import { theme } from "./theme";
-import { login } from "./widgetAuth";
+import { login } from "../../auth";
 
 const ERROR_MESSAGES = {
   invalid_credentials: "Incorrect username or password.",
@@ -21,11 +21,11 @@ function WidgetLogin({ onSuccess }) {
     event.preventDefault();
     setSubmitting(true);
     try {
-      await login(username, password);
+      const user = await login(username, password);
       setError("");
-      onSuccess();
+      onSuccess(user);
     } catch (err) {
-      setError(ERROR_MESSAGES[err.message] || "Couldn't sign in. Please try again.");
+      setError(ERROR_MESSAGES[err.message] || err.message || "Couldn't sign in. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -66,11 +66,15 @@ function WidgetLogin({ onSuccess }) {
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             size="small"
+            required
+            autoComplete="username"
             autoFocus
             fullWidth
           />
           <TextField
             label="Password"
+            required
+            autoComplete="current-password"
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(event) => setPassword(event.target.value)}

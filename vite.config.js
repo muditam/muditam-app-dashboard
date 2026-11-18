@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
         },
       },
       '/shiptrack-api': {
-        target: 'http://localhost:4000',
+        target: env.SHIPTRACK_API_BASE_URL || 'http://localhost:4000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/shiptrack-api/, ''),
       },
