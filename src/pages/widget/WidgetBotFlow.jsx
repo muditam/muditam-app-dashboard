@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Accordion, AccordionDetails, AccordionSummary, Alert, Avatar, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, Divider, IconButton, InputAdornment, MenuItem, Paper, Stack, Switch,
+  DialogTitle, Divider, IconButton, InputAdornment, MenuItem, Paper, Stack,
   Tab, Tabs, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
 import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
@@ -12,6 +12,8 @@ import PercentRoundedIcon from "@mui/icons-material/PercentRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -174,6 +176,19 @@ function WidgetPreviewMessage({ message, recommendedNames = [] }) {
 }
 
 const BOT_TEST_SESSION_KEY = "muditam_ai_bot_test_session_v1";
+const BOT_TEST_SUGGESTED_QUESTIONS = [
+  "Suggest me something for Diabetes",
+  "Suggest me something for Fatty Liver",
+  "How long does Karela Jamun Fizz take to show results?",
+];
+const BOT_TEST_DEFAULT_CONFIG = {
+  botTitle: "Muditam Expert",
+  openingMessage: "Hey 👋 I’m your personal Muditam AI Expert. What can I help you with today?",
+  launcherImage: null,
+  themeColor: "#70408f",
+};
+const BOT_TEST_WHATSAPP_URL = "https://api.whatsapp.com/send?phone=919625368707&text=Hi%0AI%20would%20like%20to%20connect%20to%20an%20expert";
+
 function loadBotTestSession() {
   try {
     const stored = JSON.parse(localStorage.getItem(BOT_TEST_SESSION_KEY) || "null");
@@ -187,11 +202,49 @@ function loadBotTestSession() {
 }
 
 function BotTest() {
-  const ids = useRef(loadBotTestSession());
-  const [messages, setMessages] = useState([{ role: "assistant", content: "How can I help you today? You can ask me about any Muditam product." }]);
-  const [recommendedNames, setRecommendedNames] = useState([]);
+  const [session] = useState(() => loadBotTestSession());
+  const ids = useRef(session);
+  const [widgetConfig, setWidgetConfig] = useState(BOT_TEST_DEFAULT_CONFIG);
+  const [previewOpen, setPreviewOpen] = useState(true);
+  const [messages, setMessages] = useState(() => Array.isArray(session.messages) && session.messages.length
+    ? session.messages
+    : [{ role: "assistant", content: BOT_TEST_DEFAULT_CONFIG.openingMessage }]);
+  const [recommendedNames, setRecommendedNames] = useState(() => Array.isArray(session.recommendedNames) ? session.recommendedNames : []);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    commerceWidgetApi.getWidgetConfig().then((config) => {
+      if (!mounted) return;
+      setWidgetConfig({ ...BOT_TEST_DEFAULT_CONFIG, ...config });
+      setMessages((current) => current.length === 1 && current[0].role === "assistant"
+        ? [{ ...current[0], content: config.openingMessage || BOT_TEST_DEFAULT_CONFIG.openingMessage }]
+        : current);
+    }).catch(() => {
+      // Keep the storefront defaults if widget configuration is unavailable.
+    });
+    return () => { mounted = false; };
+  }, []);
+  useEffect(() => {
+    const savedMessages = messages.slice(-50).map((message) => {
+      if (message.role === "products") {
+        return { role: "products", products: (message.products || []).map(({ productSlug, productUrl, name }) => ({ productSlug, productUrl, name })) };
+      }
+      if (message.role === "handoff") {
+        return { role: "handoff", handoff: message.handoff };
+      }
+      return { role: message.role, content: String(message.content ?? "") };
+    });
+    try {
+      localStorage.setItem(BOT_TEST_SESSION_KEY, JSON.stringify({
+        ...ids.current,
+        messages: savedMessages,
+        recommendedNames,
+      }));
+    } catch {
+      // Keep the in-memory preview usable if browser storage is unavailable or full.
+    }
+  }, [messages, recommendedNames]);
   const send = async (preset) => {
     const text = String(preset ?? input).trim();
     if (!text || loading) return;
@@ -224,19 +277,19 @@ function BotTest() {
   return <Stack direction={{ xs: "column", md: "row" }} spacing={2.5} alignItems="flex-start" sx={{ minWidth: 0 }}>
     <Box sx={{ flex: 1 }}>
       <Typography sx={{ fontSize: { xs: 24, md: 28 }, fontWeight: 760, color: theme.ink }}>Test your bot</Typography>
-      <Typography color="text.secondary" sx={{ mt: .5, fontSize: 14 }}>This uses the live knowledge base but is marked as an internal test session.</Typography>
-      <Stack spacing={1.1} sx={{ mt: 3, maxWidth: 560 }}>
-        {["Suggest something for diabetes", "What can support fatty liver?", "How long does Karela Jamun Fizz take to show results?"].map((item) =>
-          <Button key={item} variant="outlined" onClick={() => send(item)} sx={{ justifyContent: "flex-start", textTransform: "none", borderRadius: 2, color: theme.ink, borderColor: theme.border, minHeight: 42, px: 1.5, fontSize: 14 }}>{item}</Button>)}
-      </Stack>
+      <Typography color="text.secondary" sx={{ mt: .5, fontSize: 14 }}>Storefront preview using the saved widget title, welcome message, and photo. Test messages remain marked as internal.</Typography>
     </Box>
     <Paper sx={{ flex: "0 0 400px", width: { xs: "100%", md: 400 }, maxWidth: "100%", height: 660, overflow: "hidden", display: "grid", gridTemplateRows: "auto 1fr auto", border: "1px solid rgb(112 64 143 / 12%)", borderRadius: "24px", bgcolor: "#fdfcfd", boxShadow: "0 28px 80px rgb(47 31 55 / 12%), 0 4px 18px rgb(47 31 55 / 6%)" }}>
+      {!previewOpen ? <Box sx={{ display: "grid", placeItems: "center", p: 3, bgcolor: "#fdfcfd" }}><Button onClick={() => setPreviewOpen(true)} sx={{ minWidth: 0, width: 64, height: 64, p: 0, overflow: "hidden", borderRadius: "50%", color: "#fff", bgcolor: widgetConfig.themeColor, "&:hover": { bgcolor: widgetConfig.themeColor } }}>{widgetConfig.launcherImage ? <Box component="img" src={widgetConfig.launcherImage} alt="Open Muditam chat" sx={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Typography sx={{ fontFamily: "Georgia, serif", fontSize: 35, fontWeight: 700 }}>m</Typography>}</Button></Box> : <>
       <Stack direction="row" alignItems="center" gap={1.4} sx={{ px: 2, py: 1.85, borderBottom: "1px solid #ebe5ee", color: "#211b27", bgcolor: "rgb(255 255 255 / 94%)" }}>
-        <Box sx={{ display: "grid", width: 38, height: 38, placeItems: "center", borderRadius: "50%", color: "#fff", bgcolor: "#57316f", background: "linear-gradient(145deg, #8457a0, #57316f)", fontFamily: "Georgia, serif", fontSize: 23, fontWeight: 700 }}>m</Box>
-        <Box sx={{ flex: 1 }}><Typography sx={{ fontSize: 14, fontWeight: 700, letterSpacing: "-.01em" }}>Muditam Expert</Typography><Typography sx={{ mt: .35, color: "#766d7d", fontSize: 10.5 }}><Box component="span" sx={{ display: "inline-block", width: 6, height: 6, mr: .5, borderRadius: "50%", bgcolor: "#38a169" }} />Online · Typically replies instantly</Typography></Box>
+        <Box sx={{ display: "grid", width: 38, height: 38, placeItems: "center", overflow: "hidden", borderRadius: "50%", color: "#fff", bgcolor: widgetConfig.themeColor, background: `linear-gradient(145deg, ${widgetConfig.themeColor}, #57316f)`, fontFamily: "Georgia, serif", fontSize: 23, fontWeight: 700 }}>{widgetConfig.launcherImage ? <Box component="img" src={widgetConfig.launcherImage} alt="" sx={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "m"}</Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}><Typography sx={{ fontSize: 14, fontWeight: 700, letterSpacing: "-.01em" }}>{widgetConfig.botTitle}</Typography><Typography sx={{ mt: .35, color: "#766d7d", fontSize: 10.5 }}><Box component="span" sx={{ display: "inline-block", width: 6, height: 6, mr: .5, borderRadius: "50%", bgcolor: "#38a169" }} />Online · Typically replies instantly</Typography></Box>
+        <IconButton component="a" href={BOT_TEST_WHATSAPP_URL} target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp" size="small" sx={{ width: 34, height: 34, color: "#25d366", borderRadius: "10px" }}><WhatsAppIcon sx={{ fontSize: 21 }} /></IconButton>
+        <IconButton onClick={() => setPreviewOpen(false)} aria-label="Close chat" size="small" sx={{ width: 34, height: 34, color: "#756d7b", borderRadius: "10px", fontSize: 23 }}><CloseRoundedIcon /></IconButton>
       </Stack>
       <Box sx={{ overflowY: "auto", px: 2, pt: 2.5, pb: 1.75, bgcolor: "#fdfcfd", scrollbarColor: "#d9cce0 transparent" }}>
         {messages.map((message, index) => <WidgetPreviewMessage key={index} message={message} recommendedNames={recommendedNames} />)}
+        {messages.length === 1 && <Stack spacing={1.1} alignItems="flex-end" sx={{ mt: 1.5, mb: 1.5 }}>{BOT_TEST_SUGGESTED_QUESTIONS.map((question) => <Button key={question} onClick={() => send(question)} disabled={loading} sx={{ width: "fit-content", maxWidth: "100%", minHeight: 36, px: 2.25, py: 1, border: "1px solid #ded9e2", borderRadius: 999, color: "#302637", bgcolor: "#fff", boxShadow: "none", textTransform: "none", fontSize: 12.5, fontWeight: 750, lineHeight: 1.25, textAlign: "center", "&:hover": { borderColor: "#cfc7d4", bgcolor: "#fbfafc" } }}>{question}</Button>)}</Stack>}
         {loading && <Box sx={{ display: "inline-flex", alignItems: "center", gap: .65, minWidth: 54, minHeight: 38, px: 1.9, mb: 1.25, borderRadius: "17px", borderBottomLeftRadius: "6px", bgcolor: "#f7f4f9" }}>{[0, 1, 2].map((dot) => <Box key={dot} sx={{ width: 7, height: 7, borderRadius: "50%", bgcolor: "#70408f", opacity: .72 }} />)}</Box>}
       </Box>
       <Box component="form" onSubmit={(event) => { event.preventDefault(); send(); }} sx={{ p: "12px 14px 14px", borderTop: "1px solid #ebe5ee", bgcolor: "#fff" }}>
@@ -246,6 +299,7 @@ function BotTest() {
         </Stack>
         <Typography sx={{ display: "block", mt: .8, color: "#958d9b", fontSize: 10.5 }}>AI can make mistakes. Please verify important information.</Typography>
       </Box>
+      </>}
     </Paper>
   </Stack>;
 }
@@ -370,34 +424,115 @@ function DataSource({ onAdd }) {
   </Box>;
 }
 
-function DataAddition({ initialQuestion = "", onSaved }) {
+function DataAddition({ initialQuestion = "", missingInfoId = "", onSaved }) {
   const [title, setTitle] = useState(""); const [content, setContent] = useState(""); const [saving, setSaving] = useState(false); const [notice, setNotice] = useState(null);
-  const save = async () => { setSaving(true); setNotice(null); try { await commerceWidgetApi.addBotKnowledge({ title, content }); setTitle(""); setContent(""); setNotice({ severity: "success", text: "Knowledge saved and indexed for the chatbot." }); onSaved?.(); } catch (e) { setNotice({ severity: "error", text: e.message }); } finally { setSaving(false); } };
-  return <Box sx={{ maxWidth: 900, mx: "auto" }}><Typography variant="h5" fontWeight={750}>Add text data</Typography><Typography color="text.secondary" sx={{ mt: .5, mb: 3 }}>Add verified information for the bot to reference in future answers.</Typography>{initialQuestion && <Alert severity="info" sx={{ mb: 2 }}><strong>Customer question:</strong> {initialQuestion}<br />Give this knowledge a reusable descriptive title, then enter the verified answer below.</Alert>}{notice && <Alert severity={notice.severity} sx={{ mb: 2 }}>{notice.text}</Alert>}<Paper sx={{ ...cardSx, p: { xs: 2.5, md: 4 } }}><Stack spacing={2.5}><TextField label="Title" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Example: Liver-support product information" /><TextField label="Content" required multiline minRows={9} value={content} onChange={(e) => setContent(e.target.value)} placeholder="Enter the verified information that the bot should use..." helperText="Keep medical and product claims factual and approved." /><Divider /><Button variant="contained" disabled={saving || title.trim().length < 2 || content.trim().length < 10} onClick={save} sx={{ ...primaryButtonSx, alignSelf: "flex-end", px: 3 }}>{saving ? "Indexing..." : "Save knowledge"}</Button></Stack></Paper><Alert severity="info" sx={{ mt: 2 }}>URL and PDF ingestion will be added after text-data workflows are reviewed.</Alert></Box>;
+  const save = async () => { setSaving(true); setNotice(null); try { await commerceWidgetApi.addBotKnowledge({ title, content, ...(missingInfoId ? { resolvesMissingInfoId: missingInfoId } : {}) }); setTitle(""); setContent(""); setNotice({ severity: "success", text: missingInfoId ? "Knowledge saved. The Missing Info question is now resolved." : "Knowledge saved and indexed for the chatbot." }); onSaved?.(); } catch (e) { setNotice({ severity: "error", text: e.message }); } finally { setSaving(false); } };
+  return <Box sx={{ maxWidth: 900, mx: "auto" }}><Typography variant="h5" fontWeight={750}>Add text data</Typography><Typography color="text.secondary" sx={{ mt: .5, mb: 3 }}>Add verified information for the bot to reference in future answers.</Typography>{initialQuestion && <Alert severity="info" sx={{ mb: 2 }}><strong>Customer question:</strong> {initialQuestion}<br />Give this knowledge a reusable descriptive title, then enter the verified answer below.</Alert>}{notice && <Alert severity={notice.severity} sx={{ mb: 2 }}>{notice.text}</Alert>}<Paper sx={{ ...cardSx, p: { xs: 2.5, md: 4 } }}><Stack spacing={2.5}><TextField label="Title" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Example: Liver-support product information" /><TextField label="Content" required multiline minRows={9} value={content} onChange={(e) => setContent(e.target.value)} placeholder="Enter the verified information that the bot should use..." helperText="Keep medical and product claims factual and approved." /><Divider /><Button variant="contained" disabled={saving || title.trim().length < 2 || content.trim().length < 10} onClick={save} sx={{ ...primaryButtonSx, alignSelf: "flex-end", px: 3 }}>{saving ? "Indexing..." : "Save knowledge"}</Button></Stack></Paper><Alert severity="info" sx={{ mt: 2 }}>This workspace currently accepts text knowledge. URL and PDF ingestion are not available here yet.</Alert></Box>;
 }
 
 function MissingInfo({ onAdd }) {
-  const [questions, setQuestions] = useState([]); const [search, setSearch] = useState(""); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
-  const load = async () => { setLoading(true); try { setQuestions((await commerceWidgetApi.getMissingInfo()).questions); } catch (e) { setError(e.message); } finally { setLoading(false); } };
+  const [questions, setQuestions] = useState([]); const [search, setSearch] = useState(""); const [loading, setLoading] = useState(true); const [loadingMore, setLoadingMore] = useState(false); const [error, setError] = useState(""); const [nextCursor, setNextCursor] = useState(null); const [hasMore, setHasMore] = useState(false);
+  const load = async () => { setLoading(true); setError(""); try { const page = await commerceWidgetApi.getMissingInfo({ limit: 50 }); setQuestions(page.questions || []); setNextCursor(page.nextCursor || null); setHasMore(Boolean(page.hasMore)); } catch (e) { setError(e.message); } finally { setLoading(false); } };
+  const loadMore = async () => { if (!nextCursor || loadingMore) return; setLoadingMore(true); setError(""); try { const page = await commerceWidgetApi.getMissingInfo({ limit: 50, cursor: nextCursor }); setQuestions((current) => { const seen = new Set(current.map((item) => item.question.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim())); const additions = (page.questions || []).filter((item) => { const normalized = item.question.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim(); if (seen.has(normalized)) return false; seen.add(normalized); return true; }); return [...current, ...additions]; }); setNextCursor(page.nextCursor || null); setHasMore(Boolean(page.hasMore)); } catch (e) { setError(e.message); } finally { setLoadingMore(false); } };
   useEffect(() => { load(); }, []);
   const filtered = questions.filter((item) => item.question.toLowerCase().includes(search.toLowerCase()));
-  return <Box><Typography variant="h5" fontWeight={750}>Missing information</Typography><Alert severity="info" sx={{ my: 2.5 }}>These are real customer questions where the bot returned a refusal because verified information was unavailable.</Alert><Stack direction="row" spacing={1.5} sx={{ mb: 2 }}><TextField fullWidth placeholder="Search questions" value={search} onChange={(e) => setSearch(e.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon /></InputAdornment> }} /><IconButton onClick={load}><RefreshRoundedIcon /></IconButton></Stack>{error && <Alert severity="error">{error}</Alert>}<TableContainer component={Paper} sx={cardSx}><Table><TableHead><TableRow><TableCell>Question</TableCell><TableCell>Type</TableCell><TableCell>Date</TableCell><TableCell align="right">Action</TableCell></TableRow></TableHead><TableBody>{filtered.map((item) => <TableRow key={item.id}><TableCell>{item.question}</TableCell><TableCell><Chip size="small" label={item.category.replaceAll("_", " ")} /></TableCell><TableCell>{item.createdAt ? new Date(item.createdAt).toLocaleDateString("en-IN") : "—"}</TableCell><TableCell align="right"><Button onClick={() => onAdd(item.question)} sx={{ textTransform: "none" }}>Add answer</Button></TableCell></TableRow>)}{!loading && !filtered.length && <TableRow><TableCell colSpan={4}><Empty>No unresolved questions found.</Empty></TableCell></TableRow>}</TableBody></Table>{loading && <Box sx={{ p: 4, textAlign: "center" }}><CircularProgress /></Box>}</TableContainer></Box>;
+  return <Box><Typography variant="h5" fontWeight={750}>Missing information</Typography><Alert severity="info" sx={{ my: 2.5 }}>Only explicit verified-knowledge gaps appear here. Generation failures, feedback flags, and consultation handoffs are excluded.</Alert><Stack direction="row" spacing={1.5} sx={{ mb: 2 }}><TextField fullWidth placeholder="Search questions" value={search} onChange={(e) => setSearch(e.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon /></InputAdornment> }} /><IconButton onClick={load}><RefreshRoundedIcon /></IconButton></Stack>{error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}<TableContainer component={Paper} sx={cardSx}><Table><TableHead><TableRow><TableCell>Question</TableCell><TableCell>Type</TableCell><TableCell>Date</TableCell><TableCell align="right">Action</TableCell></TableRow></TableHead><TableBody>{filtered.map((item) => <TableRow key={item.id}><TableCell>{item.question}</TableCell><TableCell><Chip size="small" label={item.category.replaceAll("_", " ")} /></TableCell><TableCell>{item.createdAt ? new Date(item.createdAt).toLocaleDateString("en-IN") : "—"}</TableCell><TableCell align="right"><Button onClick={() => onAdd(item)} sx={{ textTransform: "none" }}>Add answer</Button></TableCell></TableRow>)}{!loading && !filtered.length && <TableRow><TableCell colSpan={4}><Empty>No unresolved questions found.</Empty></TableCell></TableRow>}</TableBody></Table>{loading && <Box sx={{ p: 4, textAlign: "center" }}><CircularProgress /></Box>}</TableContainer>{hasMore && <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}><Button variant="outlined" disabled={loadingMore} onClick={loadMore}>{loadingMore ? "Loading..." : "Load more questions"}</Button></Box>}</Box>;
 }
 
 function Discounts() {
-  const [config, setConfig] = useState({ sharingMode: "disabled", autoUpdate: false, discounts: [] }); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [dialog, setDialog] = useState(false); const [draft, setDraft] = useState({ code: "", description: "", value: "", active: true }); const [notice, setNotice] = useState("");
-  useEffect(() => { commerceWidgetApi.getDiscounts().then(setConfig).finally(() => setLoading(false)); }, []);
-  const save = async (next = config) => { setSaving(true); try { const saved = await commerceWidgetApi.saveDiscounts(next); setConfig(saved); setNotice("Discount settings saved."); } finally { setSaving(false); } };
-  const add = () => { const next = { ...config, discounts: [...config.discounts, { ...draft, id: crypto.randomUUID() }] }; setConfig(next); setDialog(false); setDraft({ code: "", description: "", value: "", active: true }); save(next); };
+  const defaults = { sharingMode: "disabled", autoUpdate: false, discounts: [] };
+  const [config, setConfig] = useState(defaults);
+  const [savedConfig, setSavedConfig] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [loadRevision, setLoadRevision] = useState(0);
+  const [dialog, setDialog] = useState(false);
+  const [draft, setDraft] = useState({ code: "", description: "", value: "", active: true });
+  const [notice, setNotice] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    commerceWidgetApi.getDiscounts()
+      .then((saved) => {
+        if (!mounted) return;
+        setConfig(saved);
+        setSavedConfig(saved);
+        setNotice(null);
+      })
+      .catch((error) => {
+        if (mounted) setNotice({ severity: "error", text: error.message || "Could not load discount settings." });
+      })
+      .finally(() => { if (mounted) setLoading(false); });
+    return () => { mounted = false; };
+  }, [loadRevision]);
+
+  const dirty = savedConfig && JSON.stringify(config) !== JSON.stringify(savedConfig);
+  const save = async (next = config) => {
+    if (saving || !savedConfig) return false;
+    setSaving(true);
+    setNotice(null);
+    try {
+      const saved = await commerceWidgetApi.saveDiscounts(next);
+      setConfig(saved);
+      setSavedConfig(saved);
+      setNotice({ severity: "success", text: "Discount settings saved." });
+      return true;
+    } catch (error) {
+      setConfig(savedConfig);
+      setNotice({ severity: "error", text: error.message || "Discount settings could not be saved. Your previous settings were restored." });
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const add = async () => {
+    if (!draft.code.trim() || saving) return;
+    const next = { ...config, discounts: [...config.discounts, { ...draft, code: draft.code.trim().toUpperCase(), id: crypto.randomUUID() }] };
+    if (await save(next)) {
+      setDialog(false);
+      setDraft({ code: "", description: "", value: "", active: true });
+    }
+  };
+
+  const remove = (id) => {
+    if (saving) return;
+    const next = { ...config, discounts: config.discounts.filter((entry) => entry.id !== id) };
+    void save(next);
+  };
+
   if (loading) return <Box sx={{ p: 8, textAlign: "center" }}><CircularProgress /></Box>;
-  return <Box><Stack direction="row" justifyContent="space-between"><Box><Typography variant="h5" fontWeight={750}>Discount management</Typography><Typography color="text.secondary" sx={{ mt: .5 }}>Control which verified discount codes the bot can share.</Typography></Box><Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={() => setDialog(true)} sx={{ textTransform: "none", borderRadius: 2.5 }}>Add discount</Button></Stack>{notice && <Alert severity="success" onClose={() => setNotice("")} sx={{ mt: 2 }}>{notice}</Alert>}<Paper sx={{ ...cardSx, p: 3, mt: 3 }}><Typography fontWeight={750}>Discount sharing behaviour</Typography><Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ mt: 2 }}>{[["relevant", "Relevant only", "Share codes matching the customer’s request."], ["all", "Show all", "List every active saved discount."], ["disabled", "Disabled", "Do not provide discount-specific guidance."]].map(([value, label, description]) => <Paper key={value} variant="outlined" onClick={() => setConfig({ ...config, sharingMode: value })} sx={{ flex: 1, p: 2.2, cursor: "pointer", borderRadius: 3, borderWidth: config.sharingMode === value ? 2 : 1, borderColor: config.sharingMode === value ? theme.accent : theme.border }}><Typography fontWeight={700}>{label}</Typography><Typography fontSize={13} color="text.secondary" sx={{ mt: .5 }}>{description}</Typography></Paper>)}</Stack><Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 3, pt: 2, borderTop: `1px solid ${theme.border}` }}><Box><Typography fontWeight={700}>Shopify auto-update</Typography><Typography fontSize={13} color="text.secondary">Available after the Shopify Admin API connection is configured.</Typography></Box><Switch disabled checked={false} /></Stack><Button variant="contained" onClick={() => save()} disabled={saving} sx={{ ...primaryButtonSx, mt: 2 }}>{saving ? "Saving..." : "Save settings"}</Button></Paper><Paper sx={{ ...cardSx, mt: 2.5, overflow: "hidden" }}><Table><TableHead><TableRow><TableCell>Code</TableCell><TableCell>Description</TableCell><TableCell>Value</TableCell><TableCell>Status</TableCell><TableCell /></TableRow></TableHead><TableBody>{config.discounts.map((item) => <TableRow key={item.id}><TableCell><Typography fontWeight={750}>{item.code}</Typography></TableCell><TableCell>{item.description || "—"}</TableCell><TableCell>{item.value || "—"}</TableCell><TableCell><Chip size="small" color={item.active ? "success" : "default"} label={item.active ? "Active" : "Inactive"} /></TableCell><TableCell align="right"><IconButton onClick={() => { const next = { ...config, discounts: config.discounts.filter((entry) => entry.id !== item.id) }; setConfig(next); save(next); }}><DeleteOutlineRoundedIcon /></IconButton></TableCell></TableRow>)}{!config.discounts.length && <TableRow><TableCell colSpan={5}><Empty>No manual discounts added yet.</Empty></TableCell></TableRow>}</TableBody></Table></Paper><Dialog open={dialog} onClose={() => setDialog(false)} fullWidth maxWidth="sm"><DialogTitle>Add manual discount</DialogTitle><DialogContent><Stack spacing={2} sx={{ mt: 1 }}><TextField label="Discount code" required value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value.toUpperCase() })} /><TextField label="Value" placeholder="Example: 10% off" value={draft.value} onChange={(e) => setDraft({ ...draft, value: e.target.value })} /><TextField label="Description" multiline minRows={3} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} /></Stack></DialogContent><DialogActions><Button onClick={() => setDialog(false)}>Cancel</Button><Button variant="contained" disabled={!draft.code.trim()} onClick={add} sx={primaryButtonSx}>Add discount</Button></DialogActions></Dialog></Box>;
+  const modeOptions = [["relevant", "Relevant only", "Share codes matching the customer’s request."], ["all", "Show all", "List every active saved discount."], ["disabled", "Disabled", "Do not provide discount-specific guidance."]];
+
+  return <Box>
+    <Stack direction="row" justifyContent="space-between">
+      <Box><Typography variant="h5" fontWeight={750}>Discount management</Typography><Typography color="text.secondary" sx={{ mt: .5 }}>Control which verified discount codes the bot can share.</Typography></Box>
+      <Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={() => setDialog(true)} disabled={!savedConfig || saving} sx={{ textTransform: "none", borderRadius: 2.5 }}>Add discount</Button>
+    </Stack>
+    {notice && <Alert severity={notice.severity} onClose={() => setNotice(null)} sx={{ mt: 2 }} action={notice.severity === "error" && !savedConfig ? <Button color="inherit" size="small" onClick={() => { setNotice(null); setLoadRevision((value) => value + 1); }}>Retry</Button> : undefined}>{notice.text}</Alert>}
+    <Paper sx={{ ...cardSx, p: 3, mt: 3 }}>
+      <Typography fontWeight={750}>Discount sharing behaviour</Typography>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ mt: 2 }}>
+        {modeOptions.map(([value, label, description]) => <Paper key={value} variant="outlined" onClick={() => { if (!saving && savedConfig) setConfig({ ...config, sharingMode: value }); }} sx={{ flex: 1, p: 2.2, cursor: !savedConfig || saving ? "default" : "pointer", borderRadius: 3, borderWidth: config.sharingMode === value ? 2 : 1, borderColor: config.sharingMode === value ? theme.accent : theme.border, opacity: !savedConfig ? .65 : 1 }}><Typography fontWeight={700}>{label}</Typography><Typography fontSize={13} color="text.secondary" sx={{ mt: .5 }}>{description}</Typography></Paper>)}
+      </Stack>
+      <Alert severity="info" sx={{ mt: 3 }}>Shopify discount auto-sync is not connected in this workspace. Saved manual codes are available to the bot; automatic Shopify discount updates are not running.</Alert>
+      <Button variant="contained" onClick={() => save()} disabled={saving || !savedConfig || !dirty} sx={{ ...primaryButtonSx, mt: 2 }}>{saving ? "Saving..." : "Save settings"}</Button>
+    </Paper>
+    <Paper sx={{ ...cardSx, mt: 2.5, overflow: "hidden" }}><Table><TableHead><TableRow><TableCell>Code</TableCell><TableCell>Description</TableCell><TableCell>Value</TableCell><TableCell>Status</TableCell><TableCell /></TableRow></TableHead><TableBody>
+      {config.discounts.map((item) => <TableRow key={item.id}><TableCell><Typography fontWeight={750}>{item.code}</Typography></TableCell><TableCell>{item.description || "—"}</TableCell><TableCell>{item.value || "—"}</TableCell><TableCell><Chip size="small" color={item.active ? "success" : "default"} label={item.active ? "Active" : "Inactive"} /></TableCell><TableCell align="right"><IconButton disabled={saving} aria-label={`Remove discount ${item.code}`} onClick={() => remove(item.id)}><DeleteOutlineRoundedIcon /></IconButton></TableCell></TableRow>)}
+      {!config.discounts.length && <TableRow><TableCell colSpan={5}><Empty>No manual discounts added yet.</Empty></TableCell></TableRow>}
+    </TableBody></Table></Paper>
+    <Dialog open={dialog} onClose={() => { if (!saving) setDialog(false); }} fullWidth maxWidth="sm"><DialogTitle>Add manual discount</DialogTitle><DialogContent><Stack spacing={2} sx={{ mt: 1 }}><TextField label="Discount code" required value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value.toUpperCase() })} /><TextField label="Value" placeholder="Example: 10% off" value={draft.value} onChange={(e) => setDraft({ ...draft, value: e.target.value })} /><TextField label="Description" multiline minRows={3} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} /></Stack></DialogContent><DialogActions><Button onClick={() => setDialog(false)} disabled={saving}>Cancel</Button><Button variant="contained" disabled={!draft.code.trim() || saving} onClick={add} sx={primaryButtonSx}>{saving ? "Saving..." : "Add discount"}</Button></DialogActions></Dialog>
+  </Box>;
 }
 
 function WidgetBotFlow() {
-  const [tab, setTab] = useState("test"); const [answerQuestion, setAnswerQuestion] = useState("");
-  const openAddition = (question = "") => { setAnswerQuestion(question); setTab("addition"); };
+  const [tab, setTab] = useState("test"); const [answerQuestion, setAnswerQuestion] = useState(""); const [answerMissingInfo, setAnswerMissingInfo] = useState(null);
+  const openAddition = (item = "") => { const selected = typeof item === "string" ? null : item; setAnswerMissingInfo(selected); setAnswerQuestion(selected?.question || item); setTab("addition"); };
+  const returnToMissingInfo = () => { setAnswerMissingInfo(null); setAnswerQuestion(""); setTab("missing"); };
   return <Box sx={{ maxWidth: 1180, mx: "auto", minWidth: 0 }}><Paper sx={{ ...cardSx, mb: 2.5, overflow: "hidden" }}><Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" scrollButtons="auto" sx={{ px: .5, minHeight: 52, "& .MuiTabs-indicator": { height: 3, borderRadius: "3px 3px 0 0", bgcolor: theme.accent } }}>{tabs.map(([value, label, icon]) => <Tab key={value} value={value} label={label} icon={icon} iconPosition="start" disableRipple sx={{ minHeight: 52, minWidth: 0, px: { xs: 1.5, md: 2 }, textTransform: "none", fontSize: 13.5, fontWeight: 700, border: 0, bgcolor: "transparent", "& .MuiSvgIcon-root": { fontSize: 20, mr: .7 }, "&.Mui-selected": { color: theme.accent, bgcolor: "transparent" }, "&:focus, &:focus-visible": { outline: "none", bgcolor: "transparent" } }} />)}</Tabs></Paper>
-    <Box>{tab === "test" && <BotTest />}{tab === "source" && <DataSource onAdd={() => openAddition()} />}{tab === "addition" && <DataAddition key={answerQuestion} initialQuestion={answerQuestion} />}{tab === "missing" && <MissingInfo onAdd={openAddition} />}{tab === "discounts" && <Discounts />}</Box>
+    <Box>{tab === "test" && <BotTest />}{tab === "source" && <DataSource onAdd={() => openAddition()} />}{tab === "addition" && <DataAddition key={answerMissingInfo?.id || answerQuestion} initialQuestion={answerQuestion} missingInfoId={answerMissingInfo?.id} onSaved={answerMissingInfo ? returnToMissingInfo : undefined} />}{tab === "missing" && <MissingInfo onAdd={openAddition} />}{tab === "discounts" && <Discounts />}</Box>
   </Box>;
 }
 

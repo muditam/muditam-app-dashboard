@@ -118,19 +118,6 @@ function ChoiceButton({ label, selected, onClick }) {
   );
 }
 
-function EmptyBox({ label }) {
-  return (
-    <Box
-      sx={{
-        height: 160, borderRadius: `${theme.radiusSmall}px`, border: `1px dashed ${theme.borderStrong}`,
-        display: "grid", placeItems: "center", color: theme.faint, fontSize: 12.5, fontWeight: 550,
-      }}
-    >
-      {label}
-    </Box>
-  );
-}
-
 function WidgetBotUI() {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -154,6 +141,12 @@ function WidgetBotUI() {
   };
 
   const handleSave = () => {
+    const visibilityMode = config.visibilityMode ?? "all";
+    const visibilityPaths = Array.isArray(config.visibilityPaths) ? config.visibilityPaths : [];
+    if (visibilityMode !== "all" && !visibilityPaths.some((path) => path.trim())) {
+      setError("Add at least one page path before enabling include or exclude rules.");
+      return;
+    }
     setSaving(true);
     setError(null);
     const submittedConfig = config;
@@ -470,7 +463,52 @@ function WidgetBotUI() {
         )}
 
         {activeTab === "visibility" && (
-          <EmptyBox label="Visibility rules aren't built yet — the widget always shows on every page." />
+          <Stack gap={2.25}>
+            <Box>
+              <FieldLabel>Where should the widget appear?</FieldLabel>
+              <Stack direction={{ xs: "column", sm: "row" }} gap={1}>
+                <ChoiceButton
+                  label="All pages"
+                  selected={(config.visibilityMode ?? "all") === "all"}
+                  onClick={() => updateField("visibilityMode", "all")}
+                />
+                <ChoiceButton
+                  label="Only matching pages"
+                  selected={config.visibilityMode === "include"}
+                  onClick={() => updateField("visibilityMode", "include")}
+                />
+                <ChoiceButton
+                  label="All except matching pages"
+                  selected={config.visibilityMode === "exclude"}
+                  onClick={() => updateField("visibilityMode", "exclude")}
+                />
+              </Stack>
+            </Box>
+            <Box>
+              <FieldLabel>Page paths</FieldLabel>
+              <TextField
+                size="small"
+                fullWidth
+                multiline
+                minRows={5}
+                disabled={(config.visibilityMode ?? "all") === "all"}
+                placeholder={"/products/berberine-pro\n/pages/about\n/blog/*"}
+                value={Array.isArray(config.visibilityPaths) ? config.visibilityPaths.join("\n") : ""}
+                onChange={(event) => updateField(
+                  "visibilityPaths",
+                  event.target.value.split(/\r?\n/u).map((path) => path.trim()).filter(Boolean),
+                )}
+              />
+              <Typography sx={{ mt: 0.75, fontSize: 12, color: theme.muted }}>
+                Enter one URL path per line. Use * to match any part of a path; query strings are ignored.
+              </Typography>
+            </Box>
+            {config.visibilityMode !== "all" && !(config.visibilityPaths || []).length && (
+              <Alert severity="warning" sx={{ borderRadius: `${theme.radiusSmall}px` }}>
+                Add at least one path before saving these visibility rules.
+              </Alert>
+            )}
+          </Stack>
         )}
 
         {activeTab === "opening" && (

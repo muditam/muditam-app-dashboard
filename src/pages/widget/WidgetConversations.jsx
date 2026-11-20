@@ -33,7 +33,7 @@ const EMPTY_FILTERS = {
   repeatCustomer: false,
   testSession: false,
   healthConcern: "",
-  productSlug: "",
+  productName: "",
 };
 const CONVERSATIONS_PAGE_SIZE = 50;
 
@@ -46,7 +46,7 @@ function activeFilterCount(filters) {
     (filters.repeatCustomer ? 1 : 0) +
     (filters.testSession ? 1 : 0) +
     (filters.healthConcern.trim() ? 1 : 0) +
-    (filters.productSlug.trim() ? 1 : 0)
+    (filters.productName.trim() ? 1 : 0)
   );
 }
 
@@ -166,8 +166,8 @@ function FiltersDialog({ open, filters, onClose, onApply }) {
               size="small"
               fullWidth
               placeholder="Search for products…"
-              value={draft.productSlug}
-              onChange={(event) => setDraft((current) => ({ ...current, productSlug: event.target.value }))}
+              value={draft.productName}
+              onChange={(event) => setDraft((current) => ({ ...current, productName: event.target.value }))}
             />
           </Box>
         </Stack>
@@ -257,15 +257,14 @@ function formatTime(value) {
 }
 
 function ConversationList({ conversations, selectedId, onSelect, search }) {
-  const filtered = search
-    ? conversations.filter((item) => item.conversationId.toLowerCase().includes(search.toLowerCase()))
-    : conversations;
-  if (!filtered.length) {
-    return <EmptyPanel title="No sessions yet" description="Conversations will appear here as customers chat." />;
+  if (!conversations.length) {
+    return search
+      ? <EmptyPanel title="No matching sessions" description="Try another session ID or clear the search." />
+      : <EmptyPanel title="No sessions yet" description="Conversations will appear here as customers chat." />;
   }
   return (
     <Stack gap={0.25}>
-      {filtered.map((item) => {
+      {conversations.map((item) => {
         const selected = item.conversationId === selectedId;
         return (
           <Box
@@ -500,18 +499,31 @@ function WidgetConversations() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [listError, setListError] = useState(null);
+  const [detailError, setDetailError] = useState(null);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [dateRange, setDateRange] = useState(undefined);
   const [page, setPage] = useState(1);
   const [totalConversations, setTotalConversations] = useState(0);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  useEffect(() => { setPage(1); }, [filters, dateRange]);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => { setPage(1); }, [filters, dateRange, debouncedSearch]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setListError(null);
+    setConversations([]);
+    setTotalConversations(0);
+    setSelectedId(null);
+    setDetail(null);
+    setDetailError(null);
     commerceWidgetApi.getConversations({
       page,
       limit: CONVERSATIONS_PAGE_SIZE,
@@ -523,7 +535,8 @@ function WidgetConversations() {
       repeatCustomer: filters.repeatCustomer,
       testSession: filters.testSession,
       healthConcern: filters.healthConcern.trim(),
-      productSlug: filters.productSlug.trim(),
+      productName: filters.productName.trim(),
+      search: debouncedSearch,
     })
       .then((data) => {
         if (!cancelled) {
@@ -531,27 +544,34 @@ function WidgetConversations() {
           setTotalConversations(data.total ?? data.conversations?.length ?? 0);
         }
       })
-      .catch((err) => { if (!cancelled) setError(err.message); })
+      .catch((err) => { if (!cancelled) setListError(err.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [filters, dateRange, page]);
+  }, [filters, dateRange, page, debouncedSearch]);
 
   useEffect(() => {
-    if (!selectedId) { setDetail(null); return; }
+    if (!selectedId) {
+      setDetail(null);
+      setDetailError(null);
+      setDetailLoading(false);
+      return;
+    }
     let cancelled = false;
     setDetailLoading(true);
+    setDetail(null);
+    setDetailError(null);
     commerceWidgetApi.getConversation(selectedId)
       .then((data) => { if (!cancelled) setDetail(data); })
-      .catch((err) => { if (!cancelled) setError(err.message); })
+      .catch((err) => { if (!cancelled) setDetailError(err.message); })
       .finally(() => { if (!cancelled) setDetailLoading(false); });
     return () => { cancelled = true; };
   }, [selectedId]);
 
   return (
     <Box>
-      {error && (
+      {(listError || detailError) && (
         <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>
-          Couldn't load conversations: {error}
+          Couldn't load {detailError ? "the selected conversation" : "conversations"}: {detailError || listError}
         </Alert>
       )}
 
@@ -616,7 +636,7 @@ function WidgetConversations() {
           <Box sx={{ flex: 1, overflowY: "auto" }}>
             {loading
               ? <ConversationListSkeleton />
-              : <ConversationList conversations={conversations} selectedId={selectedId} onSelect={setSelectedId} search={search} />}
+              : <ConversationList conversations={conversations} selectedId={selectedId} onSelect={setSelectedId} search={debouncedSearch} />}
           </Box>
           <Stack gap={0.75} alignItems="center" sx={{ pt: 0.75, borderTop: `1px solid ${theme.border}` }}>
             <Typography sx={{ fontSize: 11.5, color: theme.faint }}>
