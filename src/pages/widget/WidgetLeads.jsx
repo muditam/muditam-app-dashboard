@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { Alert, Box, Button, Chip, CircularProgress, Link, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
+import React, { useEffect, useRef, useState } from "react";
+import { Alert, Box, Button, Chip, CircularProgress, Link, Pagination, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import { commerceWidgetApi } from "../../lib/commerceWidgetApi";
 import { DateRangeFilter } from "./DateRangeFilter";
 import { widgetDateRangeParams } from "../../lib/widgetDateRange";
 import { theme } from "./theme";
+
+const LEADS_PAGE_SIZE = 50;
 
 function formatDate(value) {
   if (!value) return "—";
@@ -14,28 +16,48 @@ function formatDate(value) {
 function WidgetLeads() {
   const [leads, setLeads] = useState([]);
   const [dateRange, setDateRange] = useState(undefined);
+  const [page, setPage] = useState(1);
+  const [totalLeads, setTotalLeads] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const latestRequest = useRef(0);
 
   const load = () => {
+    const requestId = latestRequest.current + 1;
+    latestRequest.current = requestId;
     setLoading(true);
     setError("");
+    setLeads([]);
+    setTotalLeads(0);
     commerceWidgetApi.getLeads({
       ...widgetDateRangeParams(dateRange),
-      limit: 200,
+      limit: LEADS_PAGE_SIZE,
+      page,
     })
-      .then((data) => setLeads(data.leads || []))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (latestRequest.current === requestId) {
+          setLeads(data.leads || []);
+          setTotalLeads(data.total ?? data.leads?.length ?? 0);
+        }
+      })
+      .catch((err) => {
+        if (latestRequest.current === requestId) setError(err.message);
+      })
+      .finally(() => {
+        if (latestRequest.current === requestId) setLoading(false);
+      });
   };
 
-  useEffect(() => { load(); }, [dateRange]);
+  useEffect(() => {
+    load();
+    return () => { latestRequest.current += 1; };
+  }, [dateRange, page]);
 
   return (
     <Box>
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="flex-end" gap={2} sx={{ mb: 2.5 }}>
         <Stack direction="row" gap={1} alignItems="center">
-          <DateRangeFilter range={dateRange} onChange={setDateRange} />
+          <DateRangeFilter range={dateRange} onChange={(range) => { setPage(1); setDateRange(range); }} />
           <Button startIcon={<RefreshRoundedIcon />} variant="outlined" onClick={load} sx={{ textTransform: "none", borderRadius: 2 }}>
             Refresh
           </Button>
@@ -84,6 +106,20 @@ function WidgetLeads() {
         </Table>
         {loading ? <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /></Box> : null}
       </TableContainer>
+      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems="center" gap={1.5} sx={{ mt: 2 }}>
+        <Typography sx={{ fontSize: 13, color: theme.muted }}>
+          Showing {totalLeads ? ((page - 1) * LEADS_PAGE_SIZE) + 1 : 0}
+          –{Math.min(page * LEADS_PAGE_SIZE, totalLeads)} of {totalLeads} leads
+        </Typography>
+        <Pagination
+          count={Math.max(Math.ceil(totalLeads / LEADS_PAGE_SIZE), 1)}
+          page={page}
+          onChange={(_, nextPage) => setPage(nextPage)}
+          disabled={loading || totalLeads <= LEADS_PAGE_SIZE}
+          color="primary"
+          shape="rounded"
+        />
+      </Stack>
     </Box>
   );
 }
