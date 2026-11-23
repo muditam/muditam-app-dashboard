@@ -216,11 +216,11 @@ function formatCurrency(value) {
 function SalesBreakdown({ overview, loading }) {
   const rows = [
     { label: "Chat-attributed orders", orders: overview?.chatAttributedOrderCount, value: overview?.assistedOrderValue },
-    { label: "UTM-attributed orders", orders: overview?.utmAttributedOrderCount, value: overview?.orderValueUtm },
+    { label: "Chat orders with UTM tags", orders: overview?.utmAttributedOrderCount, value: overview?.orderValueUtm },
   ];
   return <Stack spacing={2}>
     <Typography sx={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5 }}>
-      Order totals use Shopify attribution fields. A single order can be counted in both rows when it has chat and UTM attribution.
+      UTM order value includes only chatbot-tagged orders with campaign metadata. These orders are also included in assisted order value.
     </Typography>
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 1.5 }}>
       {rows.map((row) => <Box key={row.label} sx={{ p: 2.25, border: `1px solid ${theme.border}`, borderRadius: `${theme.radiusSmall}px`, bgcolor: theme.surface }}>
@@ -327,7 +327,7 @@ function WidgetDashboard() {
       {activeSubTab === "Overview" && (
         <>
           <Typography sx={{ fontSize: 12.5, color: theme.muted, mb: 2, lineHeight: 1.5 }}>
-            Live storefront metrics. Assisted order value uses chat attribution; UTM order value uses UTM attribution. The two amounts may overlap.
+            Assisted order value includes chatbot-tagged orders. Order value (UTM) includes the subset with UTM campaign tags.
           </Typography>
 
           <Box
