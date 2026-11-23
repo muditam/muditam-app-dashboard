@@ -71,10 +71,12 @@ export const commerceWidgetApi = {
     if (params.feedback) query.set('feedback', params.feedback);
     if (params.addedToCart) query.set('addedToCart', 'true');
     if (params.healthConcern) query.set('healthConcern', params.healthConcern);
-    if (params.productSlug) query.set('productSlug', params.productSlug);
+    const productName = params.productName || params.productSlug;
+    if (productName) query.set('productSlug', productName);
     if (params.longChat) query.set('longChat', 'true');
     if (params.repeatCustomer) query.set('repeatCustomer', 'true');
     if (params.testSession) query.set('testSession', 'true');
+    if (params.search) query.set('search', params.search);
     return request(`/api/commerce-widget/conversations?${query.toString()}`);
   },
   getConversation(conversationId) {
@@ -85,6 +87,9 @@ export const commerceWidgetApi = {
     if (params.from) query.set('from', params.from);
     if (params.to) query.set('to', params.to);
     if (params.limit) query.set('limit', params.limit);
+    if (params.page) query.set('page', params.page);
+    if (params.search) query.set('search', params.search);
+    if (params.status) query.set('status', params.status);
     return request(`/api/commerce-widget/leads?${query.toString()}`);
   },
   getWidgetConfig() {
@@ -121,6 +126,12 @@ export const commerceWidgetApi = {
       body: JSON.stringify(payload),
     });
   },
+  importBotKnowledge(payload) {
+    return request('/api/commerce-widget/bot-flow/knowledge/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  },
+  syncDiscounts() {
+    return request('/api/commerce-widget/bot-flow/discounts/sync', { method: 'POST' });
+  },
   getBotKnowledge() {
     return request(`/api/commerce-widget/bot-flow/knowledge`);
   },
@@ -141,8 +152,12 @@ export const commerceWidgetApi = {
   deleteBotKnowledge(key) {
     return request(`/api/commerce-widget/bot-flow/knowledge/${encodeURIComponent(key)}`, { method: 'DELETE' });
   },
-  getMissingInfo() {
-    return request(`/api/commerce-widget/bot-flow/missing-info`);
+  getMissingInfo(params = {}) {
+    const query = new URLSearchParams();
+    if (params.limit) query.set('limit', params.limit);
+    if (params.cursor) query.set('cursor', params.cursor);
+    const queryString = query.toString();
+    return request(`/api/commerce-widget/bot-flow/missing-info${queryString ? `?${queryString}` : ''}`);
   },
   getDiscounts() {
     return request(`/api/commerce-widget/bot-flow/discounts`);

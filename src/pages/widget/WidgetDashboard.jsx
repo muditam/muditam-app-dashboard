@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Box, Skeleton, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Skeleton, Stack, Typography } from "@mui/material";
 import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
 import PaidRoundedIcon from "@mui/icons-material/PaidRounded";
 import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
@@ -209,16 +209,71 @@ function Panel({ title, description, children }) {
   );
 }
 
+function formatCurrency(value) {
+  return `₹${Number(value ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
+
+function SalesBreakdown({ overview, loading }) {
+  const rows = [
+    { label: "Chat-attributed orders", orders: overview?.chatAttributedOrderCount, value: overview?.assistedOrderValue },
+    { label: "UTM-attributed orders", orders: overview?.utmAttributedOrderCount, value: overview?.orderValueUtm },
+  ];
+  return <Stack spacing={2}>
+    <Typography sx={{ fontSize: 12.5, color: theme.muted, lineHeight: 1.5 }}>
+      Order totals use Shopify attribution fields. A single order can be counted in both rows when it has chat and UTM attribution.
+    </Typography>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 1.5 }}>
+      {rows.map((row) => <Box key={row.label} sx={{ p: 2.25, border: `1px solid ${theme.border}`, borderRadius: `${theme.radiusSmall}px`, bgcolor: theme.surface }}>
+        <Typography sx={{ fontSize: 12, color: theme.muted, fontWeight: 650 }}>{row.label}</Typography>
+        {loading ? <Skeleton variant="text" sx={{ fontSize: 28, width: "65%", mt: 1 }} /> : <>
+          <Typography sx={{ mt: 1, fontSize: 26, fontWeight: 760, color: theme.ink }}>{formatCurrency(row.value)}</Typography>
+          <Typography sx={{ mt: .5, fontSize: 13, color: theme.muted }}>{Number(row.orders ?? 0).toLocaleString("en-IN")} orders</Typography>
+        </>}
+      </Box>)}
+    </Box>
+    <Box sx={{ border: `1px solid ${theme.border}`, borderRadius: `${theme.radiusSmall}px`, overflow: "hidden" }}>
+      {rows.map((row) => <Stack key={row.label} direction="row" justifyContent="space-between" gap={2} sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${theme.border}`, "&:last-child": { borderBottom: 0 } }}>
+        <Typography sx={{ fontSize: 13, color: theme.ink }}>{row.label}</Typography>
+        <Typography sx={{ fontSize: 13, color: theme.muted, textAlign: "right" }}>{loading ? "Loading…" : `${Number(row.orders ?? 0).toLocaleString("en-IN")} · ${formatCurrency(row.value)}`}</Typography>
+      </Stack>)}
+    </Box>
+  </Stack>;
+}
+
+function ConversionFunnel({ overview, loading }) {
+  const stages = [
+    { label: "Conversations", value: overview?.totalConversations, detail: "Started in the selected period" },
+    { label: "Add-to-cart events", value: overview?.addToCartAssisted, detail: "Recorded in the selected period" },
+    { label: "Chat-attributed orders", value: overview?.chatAttributedOrderCount, detail: "Orders carrying chat attribution" },
+  ];
+  const max = Math.max(1, ...stages.map((stage) => Number(stage.value ?? 0)));
+  return <>
+    <Typography sx={{ mt: 1.75, fontSize: 12, color: theme.muted }}>Period totals are grouped by each record’s own date; this view does not claim same-customer conversion rates.</Typography>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, gap: 1.5, mt: 2 }}>
+      {stages.map((stage, index) => <Box key={stage.label} sx={{ p: 2.25, border: `1px solid ${theme.border}`, borderRadius: `${theme.radiusSmall}px`, bgcolor: theme.surface }}>
+        <Typography sx={{ fontSize: 10.5, fontWeight: 750, color: theme.faint, letterSpacing: ".06em", textTransform: "uppercase" }}>Stage 0{index + 1}</Typography>
+        <Typography sx={{ mt: 1, fontSize: 13, fontWeight: 650, color: theme.ink }}>{stage.label}</Typography>
+        {loading ? <Skeleton variant="text" sx={{ fontSize: 30, width: "50%", mt: .5 }} /> : <Typography sx={{ mt: .5, fontSize: 28, lineHeight: 1.1, fontWeight: 760, color: theme.accent }}>{Number(stage.value ?? 0).toLocaleString("en-IN")}</Typography>}
+        <Typography sx={{ mt: .7, fontSize: 11.5, color: theme.muted }}>{stage.detail}</Typography>
+        <Box sx={{ height: 5, mt: 1.5, borderRadius: 99, bgcolor: theme.accentSoft, overflow: "hidden" }}><Box sx={{ height: "100%", width: `${Math.min(100, (Number(stage.value ?? 0) / max) * 100)}%`, bgcolor: theme.accent, borderRadius: 99 }} /></Box>
+      </Box>)}
+    </Box>
+  </>;
+}
+
 function WidgetDashboard() {
   const [activeSubTab, setActiveSubTab] = useState("Overview");
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState(undefined);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
+    setOverview(null);
     commerceWidgetApi.getOverview({
       ...widgetDateRangeParams(dateRange),
     })
@@ -226,7 +281,7 @@ function WidgetDashboard() {
       .catch((err) => { if (!cancelled) setError(err.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [dateRange]);
+  }, [dateRange, reload]);
 
   return (
     <Box>
@@ -264,7 +319,7 @@ function WidgetDashboard() {
       </Stack>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} action={<Button color="inherit" onClick={() => setReload(value => value + 1)}>Retry</Button>}>
           Couldn't load live data: {error}
         </Alert>
       )}
@@ -272,7 +327,7 @@ function WidgetDashboard() {
       {activeSubTab === "Overview" && (
         <>
           <Typography sx={{ fontSize: 12.5, color: theme.muted, mb: 2, lineHeight: 1.5 }}>
-            Live storefront metrics. Assisted and UTM order value will populate when order attribution is connected.
+            Live storefront metrics. Assisted order value uses chat attribution; UTM order value uses UTM attribution. The two amounts may overlap.
           </Typography>
 
           <Box
@@ -304,8 +359,8 @@ function WidgetDashboard() {
               gap: 1.5,
             }}
           >
-            <Panel title="Conversion Funnel" description="Conversation → Add to Cart → Order (needs order attribution)">
-              <EmptyBox label="Not built yet" />
+            <Panel title="Conversion Funnel" description="Conversation, cart and chat-attributed order activity for the selected period">
+              <ConversionFunnel overview={overview} loading={loading} />
             </Panel>
             <Panel title="Top User Intents" description="Routing categories assigned to conversations">
               {loading ? <RankedListSkeleton /> : (
@@ -339,7 +394,7 @@ function WidgetDashboard() {
                 />
               )}
             </Panel>
-            <Panel title="Top Traffic Sources" description="UTM source parsed from the page URL">
+            <Panel title="Top Traffic Sources" description="Chats grouped by normalized UTM channel">
               {loading ? <RankedListSkeleton /> : (
                 <RankedList
                   items={overview?.topTrafficSources?.map((item) => ({ label: item.source, count: item.count }))}
@@ -356,13 +411,7 @@ function WidgetDashboard() {
         </>
       )}
 
-      {activeSubTab !== "Overview" && (
-        <Box sx={{ p: 5, borderRadius: `${theme.radius}px`, border: `1px solid ${theme.border}`, textAlign: "center" }}>
-          <Typography sx={{ fontSize: 13.5, color: theme.muted }}>
-            {activeSubTab} view is not scoped yet.
-          </Typography>
-        </Box>
-      )}
+      {activeSubTab === "Sales" && <Panel title="Sales attribution" description="Shopify order totals assigned by available chat and UTM attribution data"><SalesBreakdown overview={overview} loading={loading} /></Panel>}
     </Box>
   );
 }
