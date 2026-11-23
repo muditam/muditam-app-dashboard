@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Alert, Box, Button, Chip, CircularProgress, Link, Pagination, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, Box, Button, Chip, CircularProgress, Link, MenuItem, TextField, Pagination, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import { commerceWidgetApi } from "../../lib/commerceWidgetApi";
 import { DateRangeFilter } from "./DateRangeFilter";
@@ -16,13 +16,16 @@ function formatDate(value) {
 function WidgetLeads() {
   const [leads, setLeads] = useState([]);
   const [dateRange, setDateRange] = useState(undefined);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [totalLeads, setTotalLeads] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const latestRequest = useRef(0);
 
-  const load = () => {
+  const load = useCallback(() => {
     const requestId = latestRequest.current + 1;
     latestRequest.current = requestId;
     setLoading(true);
@@ -32,7 +35,7 @@ function WidgetLeads() {
     commerceWidgetApi.getLeads({
       ...widgetDateRangeParams(dateRange),
       limit: LEADS_PAGE_SIZE,
-      page,
+      page, search, status,
     })
       .then((data) => {
         if (latestRequest.current === requestId) {
@@ -46,12 +49,12 @@ function WidgetLeads() {
       .finally(() => {
         if (latestRequest.current === requestId) setLoading(false);
       });
-  };
+  }, [dateRange, page, search, status]);
 
   useEffect(() => {
     load();
     return () => { latestRequest.current += 1; };
-  }, [dateRange, page]);
+  }, [load]);
 
   return (
     <Box>
@@ -62,6 +65,15 @@ function WidgetLeads() {
             Refresh
           </Button>
         </Stack>
+      </Stack>
+      <Stack component="form" direction={{ xs: "column", sm: "row" }} gap={1.5} sx={{ mb: 2 }} onSubmit={(event) => { event.preventDefault(); setPage(1); setSearch(searchInput.trim()); }}>
+        <TextField size="small" label="Search name, phone, query or session" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} sx={{ flex: 1 }} inputProps={{ maxLength: 200 }} />
+        <TextField select size="small" label="Status" value={status} onChange={(event) => { setPage(1); setStatus(event.target.value); }} sx={{ minWidth: 160 }}>
+          <MenuItem value="">All statuses</MenuItem>
+          {["new", "contacted", "closed"].map(value => <MenuItem key={value} value={value}>{value}</MenuItem>)}
+        </TextField>
+        <Button type="submit" variant="outlined">Search</Button>
+        <Button onClick={() => { setPage(1); setSearchInput(""); setSearch(""); setStatus(""); }}>Clear</Button>
       </Stack>
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
       <TableContainer component={Paper} sx={{ borderRadius: `${theme.radius}px`, border: `1px solid ${theme.border}`, boxShadow: theme.shadowSoft }}>

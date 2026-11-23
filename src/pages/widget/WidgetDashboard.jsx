@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Box, Skeleton, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Skeleton, Stack, Typography } from "@mui/material";
 import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
 import PaidRoundedIcon from "@mui/icons-material/PaidRounded";
 import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
@@ -267,10 +267,13 @@ function WidgetDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState(undefined);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
+    setOverview(null);
     commerceWidgetApi.getOverview({
       ...widgetDateRangeParams(dateRange),
     })
@@ -278,7 +281,7 @@ function WidgetDashboard() {
       .catch((err) => { if (!cancelled) setError(err.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [dateRange]);
+  }, [dateRange, reload]);
 
   return (
     <Box>
@@ -316,7 +319,7 @@ function WidgetDashboard() {
       </Stack>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} action={<Button color="inherit" onClick={() => setReload(value => value + 1)}>Retry</Button>}>
           Couldn't load live data: {error}
         </Alert>
       )}

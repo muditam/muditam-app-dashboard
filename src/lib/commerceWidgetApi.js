@@ -88,6 +88,8 @@ export const commerceWidgetApi = {
     if (params.to) query.set('to', params.to);
     if (params.limit) query.set('limit', params.limit);
     if (params.page) query.set('page', params.page);
+    if (params.search) query.set('search', params.search);
+    if (params.status) query.set('status', params.status);
     return request(`/api/commerce-widget/leads?${query.toString()}`);
   },
   getWidgetConfig() {
@@ -123,6 +125,12 @@ export const commerceWidgetApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+  },
+  importBotKnowledge(payload) {
+    return request('/api/commerce-widget/bot-flow/knowledge/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  },
+  syncDiscounts() {
+    return request('/api/commerce-widget/bot-flow/discounts/sync', { method: 'POST' });
   },
   getBotKnowledge() {
     return request(`/api/commerce-widget/bot-flow/knowledge`);
