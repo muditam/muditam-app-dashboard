@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Alert, Box, Checkbox, Dialog, DialogContent, DialogTitle, Divider,
   FormControlLabel, IconButton, InputAdornment, Pagination, Skeleton, Stack, TextField, Typography, Button,
@@ -493,8 +494,10 @@ function CustomerProfile({ detail, loading }) {
 }
 
 function WidgetConversations() {
+  const [searchParams] = useSearchParams();
+  const requestedSession = searchParams.get("session") || null;
   const [conversations, setConversations] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(requestedSession);
   const [detail, setDetail] = useState(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -521,7 +524,7 @@ function WidgetConversations() {
     setListError(null);
     setConversations([]);
     setTotalConversations(0);
-    setSelectedId(null);
+    setSelectedId(requestedSession);
     setDetail(null);
     setDetailError(null);
     commerceWidgetApi.getConversations({
@@ -547,7 +550,7 @@ function WidgetConversations() {
       .catch((err) => { if (!cancelled) setListError(err.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [filters, dateRange, page, debouncedSearch]);
+  }, [filters, dateRange, page, debouncedSearch, requestedSession]);
 
   useEffect(() => {
     if (!selectedId) {
