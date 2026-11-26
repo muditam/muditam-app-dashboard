@@ -99,7 +99,15 @@ function WidgetLeads() {
                   <Typography sx={{ whiteSpace: "normal" }}>{lead.query || "—"}</Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography fontSize={12} sx={{ fontFamily: "monospace", color: theme.faint }}>{lead.conversationId || lead.leadId || "—"}</Typography>
+                  {lead.conversationId || lead.leadId ? (
+                    <Link
+                      href={`/widget/conversations?session=${encodeURIComponent(lead.conversationId || lead.leadId)}`}
+                      underline="hover"
+                      sx={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700 }}
+                    >
+                      {lead.conversationId || lead.leadId}
+                    </Link>
+                  ) : <Typography fontSize={12} sx={{ fontFamily: "monospace", color: theme.faint }}>—</Typography>}
                 </TableCell>
                 <TableCell>
                   <Stack gap={0.6} alignItems="flex-start">
